@@ -40,7 +40,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <FxCompile Include="Shader.hlsl">
+    <FxCompile Include="..\shaders\Shader.hlsl">
       <Filter>Shaders</Filter>
     </FxCompile>
   </ItemGroup>
