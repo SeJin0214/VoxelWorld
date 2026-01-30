@@ -1,25 +1,8 @@
 #pragma once
 
-struct Vector4
-{
-	float x;
-	float y;
-	float z;
-	float a;
-};
+#include <SimpleMath.h>
 
-struct Vector3
-{
-	float x;
-	float y;
-	float z;
-};
-
-struct Vector2
-{
-	float x;
-	float y;
-};
+using namespace DirectX::SimpleMath;
 
 struct BlockVertex
 {

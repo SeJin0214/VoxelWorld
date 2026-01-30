@@ -25,6 +25,7 @@ public:
 
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;
+	~Renderer() = default;
 
 private:
 	ID3D11Device* mDevice;

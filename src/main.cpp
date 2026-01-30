@@ -1,13 +1,10 @@
 #include <windows.h>
 #include <cassert>
-#include <Keyboard.h>
-#include <memory>
-#include <string>
+#include "InputManager.h"
 #include "Renderer.h"
 
 // 전역 혹은 클래스 멤버로 선언
-std::unique_ptr<DirectX::Keyboard> m_keyboard;
-DirectX::Keyboard::KeyboardStateTracker m_tracker;
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -29,43 +26,43 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 static const BlockVertex gCubeVerts[24] =
 {
-	// 정점 구조: {x, y, z,  nx, ny, nz,  r, g, b, a,  u, v}
+	// 정점 구조: { {pos}, {normal}, {color}, {uv} }
 
 	// +Z (Front)
-	{-0.5f,  0.5f,  0.5f,  0,0,1,  1,1,1,1,  0,0}, // 0
-	{ 0.5f,  0.5f,  0.5f,  0,0,1,  1,1,1,1,  1,0}, // 1
-	{ 0.5f, -0.5f,  0.5f,  0,0,1,  1,1,1,1,  1,1}, // 2
-	{-0.5f, -0.5f,  0.5f,  0,0,1,  1,1,1,1,  0,1}, // 3
+	{ {-0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1, 1, 1, 1}, {0, 0} }, // 0
+	{ { 0.5f,  0.5f,  0.5f}, { 0, 0, 1}, {1, 1, 1, 1}, {1, 0} }, // 1
+	{ { 0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1, 1, 1, 1}, {1, 1} }, // 2
+	{ {-0.5f, -0.5f,  0.5f}, { 0, 0, 1}, {1, 1, 1, 1}, {0, 1} }, // 3
 
 	// -Z (Back)
-	{ 0.5f,  0.5f, -0.5f,  0,0,-1, 1,1,1,1,  0,0}, // 4
-	{-0.5f,  0.5f, -0.5f,  0,0,-1, 1,1,1,1,  1,0}, // 5
-	{-0.5f, -0.5f, -0.5f,  0,0,-1, 1,1,1,1,  1,1}, // 6
-	{ 0.5f, -0.5f, -0.5f,  0,0,-1, 1,1,1,1,  0,1}, // 7
+	{ { 0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1, 1, 1, 1}, {0, 0} }, // 4
+	{ {-0.5f,  0.5f, -0.5f}, { 0, 0,-1}, {1, 1, 1, 1}, {1, 0} }, // 5
+	{ {-0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1, 1, 1, 1}, {1, 1} }, // 6
+	{ { 0.5f, -0.5f, -0.5f}, { 0, 0,-1}, {1, 1, 1, 1}, {0, 1} }, // 7
 
 	// +X (Right)
-	{ 0.5f,  0.5f,  0.5f,  1,0,0,  1,1,1,1,  0,0}, // 8
-	{ 0.5f,  0.5f, -0.5f,  1,0,0,  1,1,1,1,  1,0}, // 9
-	{ 0.5f, -0.5f, -0.5f,  1,0,0,  1,1,1,1,  1,1}, // 10
-	{ 0.5f, -0.5f,  0.5f,  1,0,0,  1,1,1,1,  0,1}, // 11
+	{ { 0.5f,  0.5f,  0.5f}, { 1, 0, 0}, {1, 1, 1, 1}, {0, 0} }, // 8
+	{ { 0.5f,  0.5f, -0.5f}, { 1, 0, 0}, {1, 1, 1, 1}, {1, 0} }, // 9
+	{ { 0.5f, -0.5f, -0.5f}, { 1, 0, 0}, {1, 1, 1, 1}, {1, 1} }, // 10
+	{ { 0.5f, -0.5f,  0.5f}, { 1, 0, 0}, {1, 1, 1, 1}, {0, 1} }, // 11
 
 	// -X (Left)
-	{-0.5f,  0.5f, -0.5f, -1,0,0,  1,1,1,1,  0,0}, // 12
-	{-0.5f,  0.5f,  0.5f, -1,0,0,  1,1,1,1,  1,0}, // 13
-	{-0.5f, -0.5f,  0.5f, -1,0,0,  1,1,1,1,  1,1}, // 14
-	{-0.5f, -0.5f, -0.5f, -1,0,0,  1,1,1,1,  0,1}, // 15
+	{ {-0.5f,  0.5f, -0.5f}, {-1, 0, 0}, {1, 1, 1, 1}, {0, 0} }, // 12
+	{ {-0.5f,  0.5f,  0.5f}, {-1, 0, 0}, {1, 1, 1, 1}, {1, 0} }, // 13
+	{ {-0.5f, -0.5f,  0.5f}, {-1, 0, 0}, {1, 1, 1, 1}, {1, 1} }, // 14
+	{ {-0.5f, -0.5f, -0.5f}, {-1, 0, 0}, {1, 1, 1, 1}, {0, 1} }, // 15
 
 	// +Y (Top)
-	{-0.5f,  0.5f, -0.5f,  0,1,0,  1,1,1,1,  0,0}, // 16
-	{ 0.5f,  0.5f, -0.5f,  0,1,0,  1,1,1,1,  1,0}, // 17
-	{ 0.5f,  0.5f,  0.5f,  0,1,0,  1,1,1,1,  1,1}, // 18
-	{-0.5f,  0.5f,  0.5f,  0,1,0,  1,1,1,1,  0,1}, // 19
+	{ {-0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1, 1, 1, 1}, {0, 0} }, // 16
+	{ { 0.5f,  0.5f, -0.5f}, { 0, 1, 0}, {1, 1, 1, 1}, {1, 0} }, // 17
+	{ { 0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1, 1, 1, 1}, {1, 1} }, // 18
+	{ {-0.5f,  0.5f,  0.5f}, { 0, 1, 0}, {1, 1, 1, 1}, {0, 1} }, // 19
 
 	// -Y (Bottom)
-	{-0.5f, -0.5f,  0.5f,  0,-1,0, 1,1,1,1,  0,0}, // 20
-	{ 0.5f, -0.5f,  0.5f,  0,-1,0, 1,1,1,1,  1,0}, // 21
-	{ 0.5f, -0.5f, -0.5f,  0,-1,0, 1,1,1,1,  1,1}, // 22
-	{-0.5f, -0.5f, -0.5f,  0,-1,0, 1,1,1,1,  0,1}, // 23
+	{ {-0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1, 1, 1, 1}, {0, 0} }, // 20
+	{ { 0.5f, -0.5f,  0.5f}, { 0,-1, 0}, {1, 1, 1, 1}, {1, 0} }, // 21
+	{ { 0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1, 1, 1, 1}, {1, 1} }, // 22
+	{ {-0.5f, -0.5f, -0.5f}, { 0,-1, 0}, {1, 1, 1, 1}, {0, 1} }, // 23
 };
 
 static const UINT gCubeIndices[36] =
@@ -113,10 +110,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	ID3D11Buffer* vertexBuffer = renderer.CreateVertexBuffer(&meshData);
 	ID3D11Buffer* indexBuffer = renderer.CreateIndexBuffer(&meshData);
 
+	InputManager inputManager;
+	
 
 	bool bIsExited = false;
 
-	m_keyboard = std::make_unique<DirectX::Keyboard>();
 	while (bIsExited == false)
 	{
 		MSG msg;
@@ -137,30 +135,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			}
 		}
 
+		Vector3 dir = inputManager.GetMovementVector();
 
-		// Update로 빼두고
-		auto state = m_keyboard->GetState();
-		m_tracker.Update(state);
-
-		if (state.W) 
-		{
-			OutputDebugStringA("W 키 누르는 중 - 앞으로 이동!\n");
-		}
-
-		if (state.S) 
-		{
-			OutputDebugStringA("S 키 누르는 중 - 뒤로 이동!\n");
-		}
-
-		if (state.A) 
-		{
-			OutputDebugStringA("A 키 누르는 중 - 왼쪽으로 이동!\n");
-		}
-
-		if (state.D) 
-		{
-			OutputDebugStringA("D 키 누르는 중 - 오른쪽으로 이동!\n");
-		}
 
 		// 이 값을 어떻게 줘야 하나.. 참
 
