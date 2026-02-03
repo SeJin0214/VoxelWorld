@@ -7,6 +7,7 @@
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include "BlockMeshData.h"
+#include "Camera.h"
 
 class Renderer
 {
@@ -21,7 +22,7 @@ public:
 	void PreparePipeline();
 
 	ID3D11Buffer* CreateIndexBuffer(const BlockMeshData* mesh);
-	void UpdateConstantBuffer();
+	void UpdateConstantBuffer(const Camera& camera);
 
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;

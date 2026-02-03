@@ -1,5 +1,4 @@
 // Shader.hlsl
-#pragma pack_matrix(row_major)
 
 cbuffer CBPerObject : register(b0)
 {
@@ -39,3 +38,8 @@ float4 mainPS(PS_INPUT input) : SV_TARGET
 {
     return gTex.Sample(gSamp, input.uv);
 }
+
+//float4 mainPS(PS_INPUT input, bool isFrontFace : SV_IsFrontFace) : SV_TARGET
+//{
+//    return isFrontFace ? gTex.Sample(gSamp, input.uv) : float4(1, 0, 0, 1);
+//}

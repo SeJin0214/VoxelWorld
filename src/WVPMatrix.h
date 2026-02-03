@@ -1,8 +1,9 @@
 #pragma once
-#include <DirectXMath.h>
-using namespace DirectX;
+#include <SimpleMath.h>
+
+using namespace DirectX::SimpleMath;
 
 struct WVPMatrix
 {
-    XMFLOAT4X4 WorldViewProj; // 64 bytes
+    Matrix WorldViewProj; // 64 bytes
 };

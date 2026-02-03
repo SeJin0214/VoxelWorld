@@ -1,15 +1,30 @@
 #include <windows.h>
 #include <cassert>
-#include "InputManager.h"
 #include "Renderer.h"
+#include "ScreenManager.h"
+#include "Logger.h"
+#include "InputManager.h"
+
 
 // 전역 혹은 클래스 멤버로 선언
-
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
+
+	case WM_INPUT:
+	case WM_MOUSEMOVE:
+	case WM_LBUTTONDOWN:
+	case WM_LBUTTONUP:
+	case WM_RBUTTONDOWN:
+	case WM_RBUTTONUP:
+	case WM_MBUTTONDOWN:
+	case WM_MBUTTONUP:
+	case WM_MOUSEWHEEL:
+		Logger::LogLine("WM_INPUT incoming!\n");
+		DirectX::Mouse::ProcessMessage(message, wParam, lParam);
+		break;
 	case WM_KEYDOWN:
 	case WM_KEYUP:
 		DirectX::Keyboard::ProcessMessage(message, wParam, lParam);
@@ -77,24 +92,14 @@ static const UINT gCubeIndices[36] =
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+	WCHAR windowClass[] = L"Voxel World";
+	WCHAR title[] = L"Voxel World";
 
-	// System Class라고 봐야겠다,
-
-	WCHAR WindowClass[] = L"Voxel World";
-	WCHAR Title[] = L"Voxel World";
-
-	WNDCLASSW wndclass = { 0, WndProc, 0, 0, 0, 0, 0, 0, 0, WindowClass };
+	WNDCLASSW wndclass = { 0, WndProc, 0, 0, 0, 0, 0, 0, 0, windowClass };
 	RegisterClassW(&wndclass);
 
-	// 1024 x 1024 크기에 윈도우 생성
-
-	const int WIDTH = 1024;
-	const int HEIGHT = 1024;
-	HWND hWnd = CreateWindowExW(0, WindowClass, Title, WS_POPUP | WS_VISIBLE | WS_OVERLAPPEDWINDOW,
-		CW_USEDEFAULT, CW_USEDEFAULT, WIDTH, HEIGHT,
-		nullptr, nullptr, hInstance, nullptr);
-
-
+	ScreenManager::GetInstance().CreateHWND(windowClass, title, hInstance);
+	HWND hWnd = ScreenManager::GetInstance().GetHWND();
 
 	Renderer renderer;
 	renderer.Create(hWnd);
@@ -106,17 +111,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	memcpy(meshData.indices, gCubeIndices, sizeof(meshData.indices));
 
 
+	// TODO : 프레임 레이트 조절
+	const int targetFPS = 30;
+	const double targetFrameTime = 1000.0 / targetFPS;
+
+	LARGE_INTEGER frequency;
+	QueryPerformanceFrequency(&frequency);
+
+	LARGE_INTEGER startTime, endTime;
+	double elapsedTime = 0.0;
+
 	// VertexBuffer 생성하기
 	ID3D11Buffer* vertexBuffer = renderer.CreateVertexBuffer(&meshData);
 	ID3D11Buffer* indexBuffer = renderer.CreateIndexBuffer(&meshData);
 
 	InputManager inputManager;
-	
+	Camera camera;
 
 	bool bIsExited = false;
 
 	while (bIsExited == false)
 	{
+		QueryPerformanceCounter(&startTime);
 		MSG msg;
 
 		// 처리할 메시지가 더 이상 없을때 까지 수행
@@ -135,24 +151,29 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			}
 		}
 
-		Vector3 dir = inputManager.GetMovementVector();
+		inputManager.Update();
 
+		camera.Update(inputManager);
 
-		// 이 값을 어떻게 줘야 하나.. 참
-
-
-		renderer.UpdateConstantBuffer();
+		// 나중에 경계를 제대로 잡아야 할 거 같다. 
+		renderer.UpdateConstantBuffer(camera);
 
 		UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
 		renderer.Render(vertexBuffer, indexBuffer, indexCount);
-		// Clear
-		// Draw
-		// Present
+
+		do
+		{
+			Sleep(0);
+
+			QueryPerformanceCounter(&endTime);
+
+			elapsedTime = (endTime.QuadPart - startTime.QuadPart) * 1000.0 / frequency.QuadPart;
+
+		} while (elapsedTime < targetFrameTime);
 	}
 
 	renderer.ReleaseBuffer(indexBuffer);
 	renderer.ReleaseBuffer(vertexBuffer);
-
 	renderer.Release();
 
 	return 0;

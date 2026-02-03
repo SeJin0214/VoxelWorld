@@ -1,49 +1,79 @@
+#include <Windows.h>
 #include "InputManager.h"
-#include <windows.h>
+#include "Logger.h"
+#include "ScreenManager.h"
 
 InputManager::InputManager()
 	: mKeyboard(std::make_unique<Keyboard>())
+	, mMouse(std::make_unique<Mouse>())
 	, mTracker{}
+	, mbIsMoved(false)
 {
-
+	mMouse->SetWindow(ScreenManager::GetInstance().GetHWND());
+	mMouse->SetMode(Mouse::MODE_RELATIVE);
 }
 
-Vector3 InputManager::GetMovementVector()
+void InputManager::Update()
 {
-	Vector3 v = Vector3::Zero;
+	mbIsMoved = false;
+	mKeyboardMovement = Vector3::Zero;
 	Keyboard::State state = mKeyboard->GetState();
-
 
 	mTracker.Update(state);
 
 	if (state.W)
 	{
-		v.z += 1.f;
-		OutputDebugStringA("W 키 누르는 중 - 앞으로 이동!\n");
+		mKeyboardMovement.z += 1.f;
+		Logger::LogLine("W 키 누르는 중 - 앞으로 이동!");
 	}
 
 	if (state.S)
 	{
-		v.z -= 1.f;
-		OutputDebugStringA("S 키 누르는 중 - 뒤로 이동!\n");
+		mKeyboardMovement.z -= 1.f;
+		Logger::LogLine("S 키 누르는 중 - 뒤로 이동!\n");
 	}
 
 	if (state.A)
 	{
-		v.x -= 1.f;
-		OutputDebugStringA("A 키 누르는 중 - 왼쪽으로 이동!\n");
+		mKeyboardMovement.x -= 1.f;
+		Logger::LogLine("A 키 누르는 중 - 왼쪽으로 이동!\n");
 	}
 
 	if (state.D)
 	{
-		v.x += 1.f;
-		OutputDebugStringA("D 키 누르는 중 - 오른쪽으로 이동!\n");
+		mKeyboardMovement.x += 1.f;
+		Logger::LogLine("D 키 누르는 중 - 오른쪽으로 이동!\n");
 	}
 
-	if (v != Vector3::Zero)
+	if (state.Q)
 	{
-		v.Normalize();
+		mKeyboardMovement.y += 1.f;
+		Logger::LogLine("Q 키 누르는 중 - 위로 이동!\n");
 	}
 
-	return v;
+	if (state.Z)
+	{
+		mKeyboardMovement.y -= 1.f;
+		Logger::LogLine("Z 키 누르는 중 - 아래로 이동!\n");
+	}
+
+	if (mKeyboardMovement != Vector3::Zero)
+	{
+		mbIsMoved = true;
+		mKeyboardMovement.Normalize();
+	}
+
+	mMouseMovement = Vector3::Zero;
+	Mouse::State mouseState = mMouse->GetState();
+	
+	mMouseMovement.x = static_cast<float>(mouseState.x);
+	mMouseMovement.y = static_cast<float>(mouseState.y);
+	mMouseMovement.z = 0.0f; // 휠 값 등을 저장할 수도 있음
+
+	if (mMouseMovement != Vector3::Zero)
+	{
+		mbIsMoved = true;
+	}
+	Logger::LogLine("%u", mouseState.positionMode);
+	Logger::LogLine("마우스 이동 x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
 }
