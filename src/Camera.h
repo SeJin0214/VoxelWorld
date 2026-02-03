@@ -12,7 +12,7 @@ public:
 	Camera();
 	~Camera() = default;
 
-	void Update(const InputManager& inputManager);
+	void Update(const InputManager& inputManager, const float deltaTime);
 	Matrix GetViewMatrix() const;
 	Matrix GetProjectionMatrix() const;
 
@@ -24,6 +24,5 @@ private:
 	Matrix mViewMatrix;
 	Matrix mProjMatrix;
 
-	void CreateViewMatrix();
 	void CreatePjoectionMatrix();
 };

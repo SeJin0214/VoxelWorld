@@ -4,15 +4,12 @@
 #include "ScreenManager.h"
 #include "Logger.h"
 #include "InputManager.h"
-
-
-// 전역 혹은 클래스 멤버로 선언
+#include "Timer.h"
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)
 	{
-
 	case WM_INPUT:
 	case WM_MOUSEMOVE:
 	case WM_LBUTTONDOWN:
@@ -22,7 +19,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 	case WM_MBUTTONDOWN:
 	case WM_MBUTTONUP:
 	case WM_MOUSEWHEEL:
-		Logger::LogLine("WM_INPUT incoming!\n");
 		DirectX::Mouse::ProcessMessage(message, wParam, lParam);
 		break;
 	case WM_KEYDOWN:
@@ -56,16 +52,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	BlockMeshData meshData;
 
-	// TODO : 프레임 레이트 조절
-	const int targetFPS = 30;
-	const double targetFrameTime = 1000.0 / targetFPS;
-
-	LARGE_INTEGER frequency;
-	QueryPerformanceFrequency(&frequency);
-
-	LARGE_INTEGER startTime, endTime;
-	double elapsedTime = 0.0;
-
 	// VertexBuffer 생성하기
 	ID3D11Buffer* vertexBuffer = renderer.CreateVertexBuffer(&meshData);
 	ID3D11Buffer* indexBuffer = renderer.CreateIndexBuffer(&meshData);
@@ -73,13 +59,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	InputManager inputManager;
 	Camera camera;
 
-	bool bIsExited = false;
 
+	Timer timer;
+	timer.Reset();
+	bool bIsExited = false;
 	while (bIsExited == false)
 	{
-		QueryPerformanceCounter(&startTime);
-		MSG msg;
+		timer.Tick();
 
+		MSG msg;
 		// 처리할 메시지가 더 이상 없을때 까지 수행
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
@@ -98,23 +86,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		inputManager.Update();
 
-		camera.Update(inputManager);
+		float deltaTime = timer.GetDeltaTime();
+		Logger::LogLine("Delta Time: %.4f sec", deltaTime);
+		camera.Update(inputManager, deltaTime);
 
 		// 나중에 경계를 제대로 잡아야 할 거 같다. 
 		renderer.UpdateConstantBuffer(camera);
 
 		UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
 		renderer.Render(vertexBuffer, indexBuffer, indexCount);
-
-		do
-		{
-			Sleep(0);
-
-			QueryPerformanceCounter(&endTime);
-
-			elapsedTime = (endTime.QuadPart - startTime.QuadPart) * 1000.0 / frequency.QuadPart;
-
-		} while (elapsedTime < targetFrameTime);
 	}
 
 	renderer.ReleaseBuffer(indexBuffer);

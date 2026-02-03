@@ -54,20 +54,7 @@ void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UIN
 
 void Renderer::UpdateConstantBuffer(const Camera& camera)
 {
-	// WVP 행렬을 구현해야 하는데
-	// World는 오브젝트의 Position과 Rotation, Scale이 필요해
-	// 그러면 Vertex 구조체도 바꿔야하나? 아니다. Vertex는 정점의 포지션인 것이고, 우리는 물체의 포지션이 필요한 것임
-	// 값만 있으면 Matrix 만들어주는 함수가 분명 있을 거임, 직접 만들어도 되지만 수식은 아니까 API 사용하기
-	// Rotation 곱하는 순서도 있음, 엔진마다 정해진, RoolPitchYaw 순서라고 한다.
-	// 복수의 물체는 어떻게 하나... 이건 나중에
-
-	// 얘네를 가지고 WVP 행렬을 만들어야 해.
-
 	XMMATRIX world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * XMMatrixTranslation(0.f, 0.f, 0.f);
-
-	// 뭐가 필요한가? Camera Position
-	// Camera Rotation도 필요함
-	// 그냥 view를 만들어줄까?
 
 	XMMATRIX view = camera.GetViewMatrix();
 
@@ -328,8 +315,6 @@ void Renderer::Release()
 
 	mDeviceContext->ClearState();
 	mDeviceContext->Flush();
-
-
 
 
 	mSamplerState->Release();

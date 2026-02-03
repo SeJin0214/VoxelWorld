@@ -21,7 +21,7 @@ Matrix Camera::GetProjectionMatrix() const
 	return mProjMatrix;
 }
 
-void Camera::Update(const InputManager& inputManager)
+void Camera::Update(const InputManager& inputManager, const float deltaTime)
 {
 	Vector3 position = inputManager.GetKeyboardMovement();
 	Vector3 mouseMovement = inputManager.GetMouseMovement();
@@ -29,9 +29,9 @@ void Camera::Update(const InputManager& inputManager)
 	Vector3 prevPosition = mPosition;
 	Vector3 prevRotation = mRotation;
 
-	const float sensitivity = 0.15f;
-	mRotation.y += mouseMovement.x * sensitivity; // yaw 
-	mRotation.x = std::clamp(mRotation.x + mouseMovement.y * sensitivity, -89.9f, 89.9f); // pitch
+	const float sensitivity = 5.f;
+	mRotation.y += mouseMovement.x * sensitivity * deltaTime; // yaw 
+	mRotation.x = std::clamp(mRotation.x + mouseMovement.y * sensitivity * deltaTime, -89.9f, 89.9f); // pitch
 
 	Vector3 rotationRad = Vector3(
 		XMConvertToRadians(mRotation.x),
@@ -42,11 +42,11 @@ void Camera::Update(const InputManager& inputManager)
 	Quaternion q = Quaternion::CreateFromYawPitchRoll(rotationRad);
 	mBasis = Matrix::CreateFromQuaternion(q);
 
-	const float speed = 0.1f;
+	const float speed = 1.0f;
 
-	mPosition += position.x * mBasis.Right() * speed;
-	mPosition += position.y * mBasis.Up() * speed;
-	mPosition += position.z * mBasis.Backward() * speed;
+	mPosition += position.x * mBasis.Right() * speed * deltaTime;
+	mPosition += position.y * mBasis.Up() * speed * deltaTime;
+	mPosition += position.z * mBasis.Backward() * speed * deltaTime;
 
 	Matrix world = mBasis * Matrix::CreateTranslation(mPosition);
 	mViewMatrix = world.Invert();
