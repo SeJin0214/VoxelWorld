@@ -74,6 +74,5 @@ void InputManager::Update()
 	{
 		mbIsMoved = true;
 	}
-	Logger::LogLine("%u", mouseState.positionMode);
 	Logger::LogLine("마우스 이동 x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
 }
