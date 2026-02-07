@@ -20,13 +20,16 @@ public:
 	Vector3 GetMouseMovement() const { return mMouseMovement; }
 	Vector3 GetKeyboardMovement() const { return mKeyboardMovement; }
 	bool IsMoved() const { return mbIsMoved; }
+	bool IsLeftButtonDown() const { return mbIsLeftButtonDown; }
 
 private:
 	std::unique_ptr<Keyboard> mKeyboard;
 	std::unique_ptr<Mouse> mMouse;
-	Keyboard::KeyboardStateTracker mTracker;
+	Keyboard::KeyboardStateTracker mKeyboardTracker;
+	Mouse::ButtonStateTracker mMouseTracker;
 	Vector3 mKeyboardMovement;
 	Vector3 mMouseMovement;
 	
 	bool mbIsMoved;
+	bool mbIsLeftButtonDown;
 };

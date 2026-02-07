@@ -105,9 +105,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		{
 			for (int j = 0; j < mapManager.GetColumnCount(); ++j)
 			{
-				int height = mapManager.GetHeightAt(i, j);
-				for (int k = 0; k < height; ++k)
+				for (int k = 0; k < mapManager.GetHightCount(); ++k)
 				{
+					if (mapManager.IsBlockAt(i, k, j) == false)
+					{
+						continue;
+					}
+
 					Vector3 cubePosition = Vector3(
 						static_cast<float>(i),
 						static_cast<float>(k),

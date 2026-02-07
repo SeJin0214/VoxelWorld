@@ -4,21 +4,12 @@
 #include "Camera.h"
 #include "ScreenManager.h"
 #include "InputManager.h"
+#include "MapManager.h"
 #include "Logger.h"
 
 Camera::Camera()
 {
 	CreatePjoectionMatrix();
-}
-
-Matrix Camera::GetViewMatrix() const
-{
-	return mViewMatrix;
-}
-
-Matrix Camera::GetProjectionMatrix() const
-{
-	return mProjMatrix;
 }
 
 void Camera::Update(const InputManager& inputManager, const float deltaTime)
@@ -46,10 +37,47 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime)
 
 	mPosition += position.x * mBasis.Right() * speed * deltaTime;
 	mPosition += position.y * mBasis.Up() * speed * deltaTime;
-	mPosition += position.z * mBasis.Backward() * speed * deltaTime;
+	mPosition += position.z * GetForwardDirection() * speed * deltaTime;
 
 	Matrix world = mBasis * Matrix::CreateTranslation(mPosition);
 	mViewMatrix = world.Invert();
+
+	if (inputManager.IsLeftButtonDown())
+	{
+		TryRemoveBlock();
+	}
+}
+
+void Camera::TryRemoveBlock()
+{
+	MapManager& mapManager = MapManager::GetInstance();
+	
+	Vector3 forward = GetForwardDirection();
+	const float step = 0.1f;
+	float o = 0.5f;
+	while (o < RANGE)
+	{
+		Vector3 checkPos = mPosition + forward * o;
+		o += step;
+
+		int x = static_cast<int>(std::floor(checkPos.x + 0.5f));
+		int y = static_cast<int>(std::floor(checkPos.y + 0.5f));
+		int z = static_cast<int>(std::floor(checkPos.z + 0.5f));
+
+		if (x < 0 || x >= mapManager.GetRowCount() ||
+			y < 0 || y >= mapManager.GetHightCount() ||
+			z < 0 || z >= mapManager.GetColumnCount())
+		{
+			continue;
+		}
+
+		if (mapManager.IsBlockAt(x, y, z))
+		{
+			mapManager.RemoveBlockAt(x, y, z);
+			Logger::LogLine("블록 제거 at (%d, %d, %d)", x, y, z);
+			break;
+		}
+	}
 }
 
 void Camera::CreatePjoectionMatrix()
@@ -62,3 +90,4 @@ void Camera::CreatePjoectionMatrix()
 
 	mProjMatrix = DirectX::XMMatrixPerspectiveFovLH(fovRadian, aspectRatio, nearZ, farZ);
 }
+
