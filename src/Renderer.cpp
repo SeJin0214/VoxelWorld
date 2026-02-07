@@ -32,29 +32,28 @@ Renderer::Renderer()
 
 }
 
+void Renderer::Present()
+{
+	mSwapChain->Present(1, 0);
+}
+
 void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount)
 {
 	const UINT stride = sizeof(BlockVertex);
 	const UINT offset = 0;
 
-	const float clearColor[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
-
-	mDeviceContext->ClearRenderTargetView(mRenderTargetView, clearColor);
-	mDeviceContext->ClearDepthStencilView(mDepthView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
 	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
-	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
+	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 
 	mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 	mDeviceContext->DrawIndexed(indexCount, 0, 0);
-	mSwapChain->Present(1, 0);
 }
 
-void Renderer::UpdateConstantBuffer(const Camera& camera)
+void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 cube)
 {
-	XMMATRIX world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * XMMatrixTranslation(0.f, 0.f, 0.f);
+	XMMATRIX world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * XMMatrixTranslation(cube.x, cube.y, cube.z);
 
 	XMMATRIX view = camera.GetViewMatrix();
 
@@ -93,6 +92,14 @@ void Renderer::Create(HWND hWnd)
 	CreateConstantBuffer();
 	CreateTextureAndSRV();
 	CreateSamplerState();
+}
+
+void Renderer::Prepare()
+{
+	const float clearColor[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
+
+	mDeviceContext->ClearRenderTargetView(mRenderTargetView, clearColor);
+	mDeviceContext->ClearDepthStencilView(mDepthView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 }
 
 void Renderer::PreparePipeline()
@@ -231,7 +238,6 @@ void Renderer::CreateShaders()
 	D3D11_INPUT_ELEMENT_DESC layout[] = {
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(BlockVertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(BlockVertex, normal), D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, offsetof(BlockVertex, color), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(BlockVertex, uv), D3D11_INPUT_PER_VERTEX_DATA, 0 },
 	};
 

@@ -14,15 +14,21 @@ class Renderer
 
 public:
 	Renderer();
+	void Present();
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 	void Create(HWND hWnd);
 	void Release();
 	ID3D11Buffer* CreateVertexBuffer(const BlockMeshData* mesh);
 	void ReleaseBuffer(ID3D11Buffer* vertexBuffer);
+
+	// 한 번만 세팅
 	void PreparePipeline();
 
+	// 매프레임 세팅
+	void Prepare();
+
 	ID3D11Buffer* CreateIndexBuffer(const BlockMeshData* mesh);
-	void UpdateConstantBuffer(const Camera& camera);
+	void UpdateConstantBuffer(const Camera& camera, const Vector3 cube);
 
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;

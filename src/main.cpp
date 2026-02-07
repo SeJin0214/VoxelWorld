@@ -1,10 +1,12 @@
 #include <windows.h>
 #include <cassert>
+#include <string>
 #include "Renderer.h"
 #include "ScreenManager.h"
 #include "Logger.h"
 #include "InputManager.h"
 #include "Timer.h"
+#include "MapManager.h"
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -37,6 +39,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+
 	WCHAR windowClass[] = L"Voxel World";
 	WCHAR title[] = L"Voxel World";
 
@@ -66,6 +69,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	while (bIsExited == false)
 	{
 		timer.Tick();
+		std::wstring title = L"GameEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
+		SetWindowText(hWnd, title.c_str());
 
 		MSG msg;
 		// 처리할 메시지가 더 이상 없을때 까지 수행
@@ -87,14 +92,42 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		inputManager.Update();
 
 		float deltaTime = timer.GetDeltaTime();
-		Logger::LogLine("Delta Time: %.4f sec", deltaTime);
 		camera.Update(inputManager, deltaTime);
 
-		// 나중에 경계를 제대로 잡아야 할 거 같다. 
-		renderer.UpdateConstantBuffer(camera);
+		// 나중에 경계를 제대로 잡아야 할 거 같다.
+		
+		MapManager& mapManager = MapManager::GetInstance();
 
-		UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
-		renderer.Render(vertexBuffer, indexBuffer, indexCount);
+		renderer.Prepare();
+
+		int count = 0;
+		for (int i = 0; i < mapManager.GetRowCount(); ++i)
+		{
+			for (int j = 0; j < mapManager.GetColumnCount(); ++j)
+			{
+				int height = mapManager.GetHeightAt(i, j);
+				for (int k = 0; k < height; ++k)
+				{
+					Vector3 cubePosition = Vector3(
+						static_cast<float>(i),
+						static_cast<float>(k),
+						static_cast<float>(j)
+					);
+
+					renderer.UpdateConstantBuffer(camera, cubePosition);
+					UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
+					renderer.Render(vertexBuffer, indexBuffer, indexCount);
+				}
+			}
+		}
+
+
+
+
+		renderer.Present();
+		//renderer.UpdateConstantBuffer(camera, Vector3(0.f, 0.f, 0.f));
+		//UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
+		//renderer.Render(vertexBuffer, indexBuffer, indexCount);
 	}
 
 	renderer.ReleaseBuffer(indexBuffer);

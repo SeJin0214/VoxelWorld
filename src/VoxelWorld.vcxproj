@@ -129,6 +129,7 @@
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MapManager.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ScreenManager.cpp" />
     <ClCompile Include="Logger.cpp" />
@@ -138,6 +139,7 @@
     <ClInclude Include="BlockMeshData.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="InputManager.h" />
+    <ClInclude Include="MapManager.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="BlockVertex.h" />
     <ClInclude Include="ScreenManager.h" />

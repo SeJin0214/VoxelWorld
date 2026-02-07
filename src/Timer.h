@@ -9,6 +9,7 @@ public:
 	void Tick();
 	void Reset();
 	float GetDeltaTime() const { return static_cast<float>(mDeltaTime); }
+	int GetFPS() const { return static_cast<int>(1.0 / mDeltaTime); }
 
 private:
 	double mSecondsPerCount;
