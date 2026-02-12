@@ -37,23 +37,26 @@ void Renderer::Present()
 	mSwapChain->Present(1, 0);
 }
 
-void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount)
+void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount)
 {
-	const UINT stride = sizeof(BlockVertex);
-	const UINT offset = 0;
-
+	const UINT stride[2] = { sizeof(BlockVertex), sizeof(Vector3) };
+	const UINT offset[2] = { 0, 0 };
+	ID3D11Buffer* buffers[2] = { vertexBuffer, instanceBuffer };
 	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
 	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
 	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 
-	mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+	mDeviceContext->IASetVertexBuffers(0, 2, buffers, stride, offset);
 	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-	mDeviceContext->DrawIndexed(indexCount, 0, 0);
+
+	// (인덱스 수, 인스턴스 수, 시작 인덱스, 시작 버텍스, 시작 인스턴스)
+	mDeviceContext->DrawIndexedInstanced(indexCount, instanceCount, 0, 0, 0);
+	//mDeviceContext->DrawIndexed(indexCount, 0, 0);
 }
 
-void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 cube)
+void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position)
 {
-	XMMATRIX world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * XMMatrixTranslation(cube.x, cube.y, cube.z);
+	XMMATRIX world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * XMMatrixTranslation(position.x, position.y, position.z);
 
 	XMMATRIX view = camera.GetViewMatrix();
 
@@ -239,6 +242,7 @@ void Renderer::CreateShaders()
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(BlockVertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(BlockVertex, normal), D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(BlockVertex, uv), D3D11_INPUT_PER_VERTEX_DATA, 0 },
+		{ "INSTANCEPOS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1 }
 	};
 
 	mDevice->CreateInputLayout(layout, ARRAYSIZE(layout), vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), &mInputLayout);
@@ -257,21 +261,37 @@ void Renderer::CreateConstantBuffer()
 	mDevice->CreateBuffer(&desc, nullptr, &mConstantBuffer);
 }
 
-ID3D11Buffer* Renderer::CreateVertexBuffer(const BlockMeshData* mesh)
+ID3D11Buffer* Renderer::CreateBlockMeshVertexBuffer(const BlockMeshData* mesh)
 {
 	const UINT byteWidth = sizeof(mesh->vertices);
+	const void* vertexDataPtr = mesh->vertices;
+	return CreateVertexBuffer(vertexDataPtr, byteWidth);
+}
 
+// 일반화 
+ID3D11Buffer* Renderer::CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth)
+{
+	assert(byteWidth != 0);
 	D3D11_BUFFER_DESC vertexbufferdesc = {};
 	vertexbufferdesc.ByteWidth = byteWidth;
 	vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE;  // 디바이스 버퍼인듯
 	vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER; // Vertex Buffer로 쓸 것
 
-	D3D11_SUBRESOURCE_DATA vertexbufferSRD = { mesh->vertices };
+	D3D11_SUBRESOURCE_DATA vertexbufferSRD = { vertexDataPtr };
 
 	ID3D11Buffer* vertexBuffer;
 
 	mDevice->CreateBuffer(&vertexbufferdesc, &vertexbufferSRD, &vertexBuffer);
 	return vertexBuffer;
+}
+
+ID3D11Buffer* Renderer::CreateInstanceBuffer(const std::vector<Vector3>& instances)
+{
+	assert(instances.size() != 0);
+	// 3D11_USAGE_DYNAMIC과 DISCARD 써야한다고 함
+	const UINT byteWidth = sizeof(Vector3) * instances.size();
+	const void* vertexDataPtr = instances.data();
+	return CreateVertexBuffer(vertexDataPtr, byteWidth);
 }
 
 ID3D11Buffer* Renderer::CreateIndexBuffer(const BlockMeshData* mesh)

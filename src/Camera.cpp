@@ -38,7 +38,7 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime)
 		Quaternion q = Quaternion::CreateFromYawPitchRoll(rotationRad);
 		mBasis = Matrix::CreateFromQuaternion(q);
 
-		const float speed = 1.0f;
+		const float speed = 100.0f;
 
 		mPosition += position.x * mBasis.Right() * speed * deltaTime;
 		mPosition += position.y * mBasis.Up() * speed * deltaTime;
@@ -66,7 +66,6 @@ void Camera::TryRemoveBlock() const
 		Vector3 checkPos = mPosition + forward * o;
 		o += step;
 
-
 		if (mapManager.IsBlockAt(checkPos))
 		{
 			mapManager.RemoveBlockAt(checkPos);
@@ -81,7 +80,7 @@ void Camera::CreatePjoectionMatrix()
 	constexpr float fovRadian = DirectX::XMConvertToRadians(FOV_DEGREES);
 	const float aspectRatio = ScreenManager::GetInstance().GetClientAreaAspectRatio();
 	const float nearZ = 0.1f;
-	const float farZ = 250.0f;
+	const float farZ = 500.0f;
 
 	mProjMatrix = DirectX::XMMatrixPerspectiveFovLH(fovRadian, aspectRatio, nearZ, farZ);
 }

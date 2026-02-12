@@ -140,6 +140,7 @@
     <ClInclude Include="BlockMeshData.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Chunk.h" />
+    <ClInclude Include="ChunkMesh.h" />
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="IVector3.h" />
     <ClInclude Include="MapManager.h" />

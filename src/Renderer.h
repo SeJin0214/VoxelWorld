@@ -15,10 +15,13 @@ class Renderer
 public:
 	Renderer();
 	void Present();
-	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
+	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
+	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount);
 	void Create(HWND hWnd);
 	void Release();
-	ID3D11Buffer* CreateVertexBuffer(const BlockMeshData* mesh);
+	ID3D11Buffer* CreateBlockMeshVertexBuffer(const BlockMeshData* mesh);
+	ID3D11Buffer* CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth);
+	ID3D11Buffer* CreateInstanceBuffer(const std::vector<Vector3>& instances);
 	void ReleaseBuffer(ID3D11Buffer* vertexBuffer);
 
 	// 한 번만 세팅
@@ -28,7 +31,7 @@ public:
 	void Prepare();
 
 	ID3D11Buffer* CreateIndexBuffer(const BlockMeshData* mesh);
-	void UpdateConstantBuffer(const Camera& camera, const Vector3 cube);
+	void UpdateConstantBuffer(const Camera& camera, const Vector3 position);
 
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;

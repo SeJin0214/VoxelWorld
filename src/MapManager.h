@@ -27,9 +27,9 @@ public:
 	static int32_t GetWorldSizeY() { return WORLD_SIZE_Y; }
 
 private:
-	static constexpr int32_t WORLD_SIZE_Z = 256; // 16384
-	static constexpr int32_t WORLD_SIZE_X = 256; // 16384
-	static constexpr int32_t WORLD_SIZE_Y = 128; // 256
+	static constexpr int32_t WORLD_SIZE_Z = 64; // 16384
+	static constexpr int32_t WORLD_SIZE_X = 64; // 16384
+	static constexpr int32_t WORLD_SIZE_Y = 64; // 256
 	static MapManager instance;
 
 	enum 

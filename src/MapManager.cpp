@@ -14,7 +14,7 @@ MapManager::MapManager()
 	mFreePool.reserve(MEMORY_POOL_SIZE);
 	mUsedChunks.reserve(MEMORY_POOL_SIZE);
 	mChunks.reserve(MEMORY_POOL_SIZE);
-	mVisibleChunk.reserve(MEMORY_POOL_SIZE * 0.5f);
+	mVisibleChunk.reserve(static_cast<size_t>(MEMORY_POOL_SIZE * 0.5f));
 
 	for (int32_t i = 0; i < MEMORY_POOL_SIZE; ++i)
 	{
@@ -50,17 +50,29 @@ void MapManager::UpdateChunkStreaming(const Camera& camera)
 	assert(loadedChunkCount % 2 == 1); // 홀수여야 가운데 기준으로 좌우 대칭이 됨
 	
 	int32_t offset = (loadedChunkCount / 2) * chunkSize;
-	
-	int32_t back = max(-WORLD_SIZE_Z, mLastChunkPosition.z - offset); // 월드 벗어나는 거 로드 안하도록
-	int32_t front = mLastChunkPosition.z + offset;
+
+	const int32_t halfZ = WORLD_SIZE_Z / 2;
+	const int32_t minZ = -halfZ;
+	const int32_t maxZ = halfZ;
+
+	const int32_t halfX = WORLD_SIZE_X / 2;
+	const int32_t minX = -halfX;
+	const int32_t maxX = halfX;
+
+	const int32_t halfY = WORLD_SIZE_Y / 2;
+	const int32_t minY = -halfY;
+	const int32_t maxY = halfY;
+
+	int32_t back = max(minZ, mLastChunkPosition.z - offset); // 월드 벗어나는 거 로드 안하도록
+	int32_t front = min(maxZ - chunkSize, mLastChunkPosition.z + offset);
 	for (int32_t i = back; i <= front; i += chunkSize)
 	{
-		int32_t left = max(-WORLD_SIZE_X, mLastChunkPosition.x - offset);
-		int32_t right = mLastChunkPosition.x + offset;
+		int32_t left = max(minX, mLastChunkPosition.x - offset);
+		int32_t right = min(maxX - chunkSize, mLastChunkPosition.x + offset);
 		for (int32_t j = left; j <= right; j += chunkSize)
 		{
-			int32_t bottom = max(-WORLD_SIZE_Y, mLastChunkPosition.y - offset);
-			int32_t top = mLastChunkPosition.y + offset;
+			int32_t bottom = max(minY, mLastChunkPosition.y - offset);
+			int32_t top = min(maxY - chunkSize, mLastChunkPosition.y + offset);
 			for (int32_t k = bottom; k <= top; k += chunkSize)
 			{
 				IVector3 chunkPos(j, k, i);
@@ -79,7 +91,7 @@ void MapManager::UpdateChunkStreaming(const Camera& camera)
 
 	// 삭제 offset을 이용해서 계산하기
 	// 청크 5개라면, 7개 까지는 봐주기
-	for (uint32_t i = 0; i < mUsedChunks.size(); ++i)
+	for (int32_t i = 0; i < mUsedChunks.size(); ++i)
 	{
 		const ChunkInfo& chunkInfo = mUsedChunks[i];
 		int32_t distanceX = abs(chunkInfo.position.x - mLastChunkPosition.x);
@@ -118,10 +130,13 @@ bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 {
 	// 이 포지션으로 청크 찾기
 	uint64_t key = GetChunkKey(GetChunkPosition(blockPosition));
-	assert(mChunks.find(key) != mChunks.end());
+	const auto& iter = mChunks.find(key);
+	if (iter == mChunks.end())
+	{
+		return false;
+	}
 
 	// 해시로 변경하기 
-	const auto& iter = mChunks.find(key);
 	const Chunk& chunk = mChunkArray[iter->second];
 	return chunk.IsBlockAt(blockPosition);
 }

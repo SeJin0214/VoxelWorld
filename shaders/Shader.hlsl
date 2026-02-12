@@ -10,6 +10,7 @@ struct VS_INPUT
     float3 position : POSITION;
     float3 normal : NORMAL;
     float2 uv : TEXCOORD0;
+    float3 instancePos : INSTANCEPOS;
 };
 
 struct PS_INPUT
@@ -21,8 +22,8 @@ struct PS_INPUT
 PS_INPUT mainVS(VS_INPUT input)
 {
     PS_INPUT output;
-    
-    output.position = mul(float4(input.position, 1.0f), gWorldViewProj);
+    output.position = float4(input.position + input.instancePos, 1.0f);
+    output.position = mul(output.position, gWorldViewProj);
     output.uv = input.uv;
     
     return output;

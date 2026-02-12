@@ -55,11 +55,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	BlockMeshData meshData;
 
 	// VertexBuffer 생성하기
-	ID3D11Buffer* vertexBuffer = renderer.CreateVertexBuffer(&meshData);
+	ID3D11Buffer* vertexBuffer = renderer.CreateBlockMeshVertexBuffer(&meshData);
 	ID3D11Buffer* indexBuffer = renderer.CreateIndexBuffer(&meshData);
 
 	InputManager inputManager;
-	Camera camera(Vector3(5, 12, 5), Vector3());
+	Camera camera(Vector3(5, 0, -50), Vector3());
 
 
 	Timer timer;
@@ -105,6 +105,28 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// loadChunkMesh 
 
 
+		const std::vector<const Chunk*> visibleChunks = mapManager.GetVisibleChunks();
+		std::vector<Vector3> blockPositions;
+		blockPositions.reserve(static_cast<size_t>(Chunk::GetChunkSize()) * Chunk::GetChunkSize() * Chunk::GetChunkSize());
+		for (const Chunk* chunk : visibleChunks)
+		{
+			IVector3 chunkPosition = chunk->GetChunkPosition();
+			renderer.UpdateConstantBuffer(camera, Vector3(static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z)));
+
+			chunk->GetBlockPositions(blockPositions);
+			if (blockPositions.size() == 0)
+			{
+				continue;
+			}
+			ID3D11Buffer* instanceBuffer = renderer.CreateInstanceBuffer(blockPositions);
+
+			UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
+			// instance buffer 바인딩
+			renderer.Render(vertexBuffer, indexBuffer, indexCount, instanceBuffer, static_cast<UINT>(blockPositions.size()));
+
+			blockPositions.clear();
+			instanceBuffer->Release();
+		}
 		
 
 		//int count = 0;
