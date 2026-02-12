@@ -39,7 +39,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-
 	WCHAR windowClass[] = L"Voxel World";
 	WCHAR title[] = L"Voxel World";
 
@@ -60,7 +59,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	ID3D11Buffer* indexBuffer = renderer.CreateIndexBuffer(&meshData);
 
 	InputManager inputManager;
-	Camera camera;
+	Camera camera(Vector3(5, 12, 5), Vector3());
 
 
 	Timer timer;
@@ -89,6 +88,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			}
 		}
 
+		renderer.Prepare();
+
+
+
 		inputManager.Update();
 
 		float deltaTime = timer.GetDeltaTime();
@@ -97,36 +100,37 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// 나중에 경계를 제대로 잡아야 할 거 같다.
 		
 		MapManager& mapManager = MapManager::GetInstance();
+		mapManager.Update(camera);
 
-		renderer.Prepare();
-
-		int count = 0;
-		for (int i = 0; i < mapManager.GetRowCount(); ++i)
-		{
-			for (int j = 0; j < mapManager.GetColumnCount(); ++j)
-			{
-				for (int k = 0; k < mapManager.GetHightCount(); ++k)
-				{
-					if (mapManager.IsBlockAt(i, k, j) == false)
-					{
-						continue;
-					}
-
-					Vector3 cubePosition = Vector3(
-						static_cast<float>(i),
-						static_cast<float>(k),
-						static_cast<float>(j)
-					);
-
-					renderer.UpdateConstantBuffer(camera, cubePosition);
-					UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
-					renderer.Render(vertexBuffer, indexBuffer, indexCount);
-				}
-			}
-		}
+		// loadChunkMesh 
 
 
+		
 
+		//int count = 0;
+		//for (int i = 0; i < mapManager.GetRowCount(); ++i)
+		//{
+		//	for (int j = 0; j < mapManager.GetColumnCount(); ++j)
+		//	{
+		//		for (int k = 0; k < mapManager.GetHightCount(); ++k)
+		//		{
+		//			if (mapManager.IsBlockAt(i, k, j) == false)
+		//			{
+		//				continue;
+		//			}
+
+		//			Vector3 cubePosition = Vector3(
+		//				static_cast<float>(i),
+		//				static_cast<float>(k),
+		//				static_cast<float>(j)
+		//			);
+
+		//			renderer.UpdateConstantBuffer(camera, cubePosition);
+		//			UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
+		//			renderer.Render(vertexBuffer, indexBuffer, indexCount);
+		//		}
+		//	}
+		//}
 
 		renderer.Present();
 		//renderer.UpdateConstantBuffer(camera, Vector3(0.f, 0.f, 0.f));
