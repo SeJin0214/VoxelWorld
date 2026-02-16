@@ -13,6 +13,8 @@ public:
 	Chunk() = default;
 	~Chunk() = default;
 	static int32_t GetChunkSize() { return CHUNK_SIZE; }
+	static int32_t GetTotalChunkCount() { return CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE; }
+
 
 	// const ChunkMesh& GetMesh() const;
 

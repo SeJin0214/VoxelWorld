@@ -21,7 +21,9 @@ public:
 	void Release();
 	ID3D11Buffer* CreateBlockMeshVertexBuffer(const BlockMeshData* mesh);
 	ID3D11Buffer* CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth);
-	ID3D11Buffer* CreateInstanceBuffer(const std::vector<Vector3>& instances);
+	ID3D11Buffer* CreateInstanceBuffer(const UINT byteWidth);
+	void UpdateInstanceBuffer(ID3D11Buffer* instanceBuffer, const std::vector<Vector3>& positions);
+
 	void ReleaseBuffer(ID3D11Buffer* vertexBuffer);
 
 	// 한 번만 세팅

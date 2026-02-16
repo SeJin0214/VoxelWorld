@@ -28,6 +28,7 @@ void MapManager::Update(const Camera& camera)
 	// 나중에 렌더거리 변했을 때도 넣어주기 if (camera.IsChangedRenderDistance())
 	if (IsMovedChunkPosition(camera)) 
 	{
+		Logger::LogLine("청크 포지션 바뀜");
 		UpdateChunkStreaming(camera);
 	}
 
@@ -76,7 +77,7 @@ void MapManager::UpdateChunkStreaming(const Camera& camera)
 			for (int32_t k = bottom; k <= top; k += chunkSize)
 			{
 				IVector3 chunkPos(j, k, i);
-				Logger::LogLine("Loading chunk at (%d, %d, %d)", chunkPos.x, chunkPos.y, chunkPos.z);
+				//Logger::LogLine("Loading chunk at (%d, %d, %d)", chunkPos.x, chunkPos.y, chunkPos.z);
 				uint64_t key = GetChunkKey(chunkPos);
 				if (mChunks.find(key) == mChunks.end())
 				{

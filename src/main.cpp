@@ -1,3 +1,7 @@
+//#define _CRTDBG_MAP_ALLOC
+//#include <stdlib.h>
+//#include <crtdbg.h>
+
 #include <windows.h>
 #include <cassert>
 #include <string>
@@ -57,6 +61,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	// VertexBuffer 생성하기
 	ID3D11Buffer* vertexBuffer = renderer.CreateBlockMeshVertexBuffer(&meshData);
 	ID3D11Buffer* indexBuffer = renderer.CreateIndexBuffer(&meshData);
+	ID3D11Buffer* instanceBuffer = renderer.CreateInstanceBuffer(sizeof(Vector3) * Chunk::GetTotalChunkCount());
 
 	InputManager inputManager;
 	Camera camera(Vector3(5, 0, -50), Vector3());
@@ -68,7 +73,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	while (bIsExited == false)
 	{
 		timer.Tick();
-		std::wstring title = L"GameEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
+		std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
+
+
 		SetWindowText(hWnd, title.c_str());
 
 		MSG msg;
@@ -90,9 +97,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 		renderer.Prepare();
 
-
-
-		inputManager.Update();
+		if (inputManager.Update() == false)
+		{
+			break;
+		}
 
 		float deltaTime = timer.GetDeltaTime();
 		camera.Update(inputManager, deltaTime);
@@ -118,14 +126,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			{
 				continue;
 			}
-			ID3D11Buffer* instanceBuffer = renderer.CreateInstanceBuffer(blockPositions);
-
+			
+			renderer.UpdateInstanceBuffer(instanceBuffer, blockPositions);
 			UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
-			// instance buffer 바인딩
 			renderer.Render(vertexBuffer, indexBuffer, indexCount, instanceBuffer, static_cast<UINT>(blockPositions.size()));
-
 			blockPositions.clear();
-			instanceBuffer->Release();
 		}
 		
 
@@ -163,6 +168,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	renderer.ReleaseBuffer(indexBuffer);
 	renderer.ReleaseBuffer(vertexBuffer);
 	renderer.Release();
+
+
+	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
+	//_CrtDumpMemoryLeaks();
 
 	return 0;
 }

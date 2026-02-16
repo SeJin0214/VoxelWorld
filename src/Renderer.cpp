@@ -218,7 +218,6 @@ void Renderer::CreateRaterizerState()
 	//desc.FillMode = D3D11_FILL_WIREFRAME;
 	//desc.CullMode = D3D11_CULL_NONE; // 컬링 끄기, 디버깅
 
-
 	mDevice->CreateRasterizerState(&desc, &mRaterizerState);
 	assert(mRaterizerState != nullptr);
 }
@@ -268,31 +267,55 @@ ID3D11Buffer* Renderer::CreateBlockMeshVertexBuffer(const BlockMeshData* mesh)
 	return CreateVertexBuffer(vertexDataPtr, byteWidth);
 }
 
-// 일반화 
-ID3D11Buffer* Renderer::CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth)
-{
-	assert(byteWidth != 0);
-	D3D11_BUFFER_DESC vertexbufferdesc = {};
-	vertexbufferdesc.ByteWidth = byteWidth;
-	vertexbufferdesc.Usage = D3D11_USAGE_IMMUTABLE;  // 디바이스 버퍼인듯
-	vertexbufferdesc.BindFlags = D3D11_BIND_VERTEX_BUFFER; // Vertex Buffer로 쓸 것
-
-	D3D11_SUBRESOURCE_DATA vertexbufferSRD = { vertexDataPtr };
-
-	ID3D11Buffer* vertexBuffer;
-
-	mDevice->CreateBuffer(&vertexbufferdesc, &vertexbufferSRD, &vertexBuffer);
-	return vertexBuffer;
-}
-
-ID3D11Buffer* Renderer::CreateInstanceBuffer(const std::vector<Vector3>& instances)
+ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 {
 	assert(instances.size() != 0);
 	// 3D11_USAGE_DYNAMIC과 DISCARD 써야한다고 함
-	const UINT byteWidth = sizeof(Vector3) * instances.size();
-	const void* vertexDataPtr = instances.data();
-	return CreateVertexBuffer(vertexDataPtr, byteWidth);
+
+	D3D11_BUFFER_DESC instanceBufferDesc = {};
+	instanceBufferDesc.ByteWidth = byteWidth;
+	instanceBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+	// vertexBuffer랑 다른 점
+	instanceBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+	instanceBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	instanceBufferDesc.StructureByteStride = sizeof(Vector3);
+
+	ID3D11Buffer* instanceBuffer;
+
+	mDevice->CreateBuffer(&instanceBufferDesc, nullptr, &instanceBuffer);
+
+	return instanceBuffer;
 }
+
+void Renderer::UpdateInstanceBuffer(ID3D11Buffer* instanceBuffer, const std::vector<Vector3>& positions)
+{
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	mDeviceContext->Map(instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+
+	D3D11_BUFFER_DESC desc;
+	instanceBuffer->GetDesc(&desc);
+	memcpy(mapped.pData, positions.data(), desc.ByteWidth);
+	mDeviceContext->Unmap(instanceBuffer, 0);
+}
+
+ID3D11Buffer* Renderer::CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth)
+{
+	assert(byteWidth != 0);
+	D3D11_BUFFER_DESC vertexBufferDesc = {};
+	vertexBufferDesc.ByteWidth = byteWidth;
+	vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+
+	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { vertexDataPtr };
+
+	ID3D11Buffer* vertexBuffer;
+
+	mDevice->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &vertexBuffer);
+	return vertexBuffer;
+}
+
+
 
 ID3D11Buffer* Renderer::CreateIndexBuffer(const BlockMeshData* mesh)
 {

@@ -15,7 +15,7 @@ InputManager::InputManager()
 	mMouse->SetMode(Mouse::MODE_RELATIVE);
 }
 
-void InputManager::Update()
+bool InputManager::Update()
 {
 	mbIsMoved = false;
 	mbIsLeftButtonDown = false;
@@ -24,6 +24,12 @@ void InputManager::Update()
 	Keyboard::State state = mKeyboard->GetState();
 
 	mKeyboardTracker.Update(state);
+
+	if (state.Escape)
+	{
+		return false;
+		//Logger::LogLine("Z 키 누르는 중 - 아래로 이동!\n");
+	}
 
 	if (state.W)
 	{
@@ -86,4 +92,5 @@ void InputManager::Update()
 		Logger::LogLine("마우스 클릭");
 		mbIsLeftButtonDown = true;
 	}
+	return true;
 }

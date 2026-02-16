@@ -16,7 +16,7 @@ public:
 	InputManager& operator=(const InputManager& rhs) = delete;
 	~InputManager() = default;
 
-	void Update();
+	bool Update();
 	Vector3 GetMouseMovement() const { return mMouseMovement; }
 	Vector3 GetKeyboardMovement() const { return mKeyboardMovement; }
 	bool IsMoved() const { return mbIsMoved; }
