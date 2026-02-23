@@ -2,6 +2,7 @@
 #include "MapManager.h"
 #include "Logger.h"
 #include "Camera.h"
+#include "Renderer.h"
 
 MapManager MapManager::instance;
 
@@ -14,7 +15,6 @@ MapManager::MapManager()
 	mFreePool.reserve(MEMORY_POOL_SIZE);
 	mUsedChunks.reserve(MEMORY_POOL_SIZE);
 	mChunks.reserve(MEMORY_POOL_SIZE);
-	mVisibleChunk.reserve(static_cast<size_t>(MEMORY_POOL_SIZE * 0.5f));
 
 	for (int32_t i = 0; i < MEMORY_POOL_SIZE; ++i)
 	{
@@ -22,23 +22,18 @@ MapManager::MapManager()
 	}
 }
 
-void MapManager::Update(const Camera& camera)
+void MapManager::Update(const Camera& camera, Renderer& renderer)
 {
 	// 위치 변했을 때, 
 	// 나중에 렌더거리 변했을 때도 넣어주기 if (camera.IsChangedRenderDistance())
 	if (IsMovedChunkPosition(camera)) 
 	{
 		Logger::LogLine("청크 포지션 바뀜");
-		UpdateChunkStreaming(camera);
-	}
-
-	if (camera.HasTransformChanged())
-	{
-		UpdateVisibleList(camera);
+		UpdateChunkStreaming(camera, renderer);
 	}
 }
 
-void MapManager::UpdateChunkStreaming(const Camera& camera)
+void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 {
 	mLastChunkPosition = GetChunkPosition(camera.GetPosition());
 	uint32_t renderDistance = camera.GetRenderDistance();
@@ -78,7 +73,7 @@ void MapManager::UpdateChunkStreaming(const Camera& camera)
 			{
 				IVector3 chunkPos(j, k, i);
 				//Logger::LogLine("Loading chunk at (%d, %d, %d)", chunkPos.x, chunkPos.y, chunkPos.z);
-				uint64_t key = GetChunkKey(chunkPos);
+				ChunkKey key = GetChunkKey(chunkPos);
 				if (mChunks.find(key) == mChunks.end())
 				{
 					int32_t chunkIndex = SpawnChunk();
@@ -102,24 +97,24 @@ void MapManager::UpdateChunkStreaming(const Camera& camera)
 		if (distanceX > despawnBoundary || distanceY > despawnBoundary || distanceZ > despawnBoundary)
 		{
 			DespawnChunkAt(chunkInfo.index);
-			mChunks.erase(GetChunkKey(chunkInfo.position));
+
+			ChunkKey chunkKey = GetChunkKey(chunkInfo.position);
+			mChunks.erase(chunkKey);
+
 			std::swap(mUsedChunks[i], mUsedChunks.back()); // 제거할 요소와 마지막 요소를 스왑
 			mUsedChunks.pop_back();
 			--i; // 요소가 하나 제거되었으므로 인덱스 조정
+
+			renderer.OnDisableChunk(chunkKey);
 		}
 	}
 	// 현재 청크 포지션을 기준으로 렌더 거리 내의 청크들을 스폰
 }
 
-void MapManager::UpdateVisibleList(const Camera& camera)
+void MapManager::RebuildChunkMesh(const ChunkInfo& chunkInfo)
 {
-	// frustum 이용해서 보여주기 
-	mVisibleChunk.clear();
-	
-	for (const auto& chunkInfo : mUsedChunks)
-	{
-		mVisibleChunk.push_back(&mChunkArray[chunkInfo.index]);
-	}
+	assert(mChunks.find(GetChunkKey(chunkInfo.position)) != mChunks.end());
+	mChunkArray[chunkInfo.index].RebuildLocalPositions();
 }
 
 bool MapManager::IsMovedChunkPosition(const Camera& camera) const
@@ -130,7 +125,7 @@ bool MapManager::IsMovedChunkPosition(const Camera& camera) const
 bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 {
 	// 이 포지션으로 청크 찾기
-	uint64_t key = GetChunkKey(GetChunkPosition(blockPosition));
+	ChunkKey key = GetChunkKey(GetChunkPosition(blockPosition));
 	const auto& iter = mChunks.find(key);
 	if (iter == mChunks.end())
 	{
@@ -144,7 +139,7 @@ bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 
 void MapManager::RemoveBlockAt(const Vector3 blockPosition)
 {
-	uint64_t key = GetChunkKey(GetChunkPosition(blockPosition));
+	ChunkKey key = GetChunkKey(GetChunkPosition(blockPosition));
 	assert(mChunks.find(key) != mChunks.end());
 
 	int32_t index = mChunks[key];
@@ -165,14 +160,23 @@ IVector3 MapManager::GetChunkPosition(const Vector3 position)
 	return result;
 }
 
-uint64_t MapManager::GetChunkKey(const IVector3 chunkPosition) const
+ChunkKey MapManager::GetChunkKey(const IVector3 chunkPosition)
 {
 	uint64_t x = chunkPosition.x & 0xFFFFF; // 20bit
 	uint64_t y = chunkPosition.y & 0xFFFFF; // 20bit
 	uint64_t z = chunkPosition.z & 0xFFFFF; // 20bit
 
-	uint64_t result = ((z << 40) | (y << 20) | x);
+	ChunkKey result = ((z << 40) | (y << 20) | x);
 	return result;
+}
+
+// mUsedChunks와 같이 사용
+const Chunk& MapManager::GetChunk(const ChunkInfo& chunkInfo) const
+{
+	assert(mChunks.find(GetChunkKey(chunkInfo.position)) != mChunks.end());
+
+	int32_t index = chunkInfo.index;
+	return mChunkArray[index];
 }
 
 int MapManager::SpawnChunk()

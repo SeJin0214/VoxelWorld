@@ -5,9 +5,11 @@
 #include "DirectXMath.h"
 #include "WICTextureLoader.h"   // png/jpg/bmp 등 (WIC)
 #include "ScreenManager.h"
+#include "MapManager.h"
 
 #include <iostream>
 #include "Logger.h"
+#include "Timer.h"
 
 using namespace DirectX;
 
@@ -32,9 +34,116 @@ Renderer::Renderer()
 
 }
 
+void Renderer::Update(const Camera& camera)
+{
+	MapManager& mapManager = MapManager::GetInstance();
+	const std::vector<ChunkInfo> usedChunks = mapManager.GetUsedChunks();
+
+	mDeviceContext->Begin(mPipelineQuery.Get());
+
+	// GetWorldFrustum으로 뽑아내자
+	BoundingFrustum frustum;
+	BoundingFrustum::CreateFromMatrix(frustum, camera.GetProjectionMatrix());
+
+	XMMATRIX viewMat = camera.GetViewMatrix();
+	XMVECTOR det;
+	XMMATRIX invView = XMMatrixInverse(&det, viewMat); // 카메라에서 뽑아와도 된다.
+
+	BoundingFrustum frustumWorld;
+	frustum.Transform(frustumWorld, invView);
+
+	for (uint32_t i = 0; i < usedChunks.size(); ++i)
+	{
+		// usedChunks[i] 가지고 frustum 컬링 판단하기
+		const Chunk& chunk = mapManager.GetChunk(usedChunks[i]);
+		IVector3 chunkPosition = chunk.GetChunkPosition();
+
+		BoundingBox aabb;
+		BoundingBox::CreateFromPoints(aabb,
+			XMVECTOR{ static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z) },
+			XMVECTOR{ static_cast<float>(chunkPosition.x + 16), static_cast<float>(chunkPosition.y + 16), static_cast<float>(chunkPosition.z + 16) });
+
+		if (frustumWorld.Contains(aabb) == DirectX::DISJOINT)
+		{
+			continue;
+		}
+
+		bool bIsDirty = chunk.IsDirty();
+		if (bIsDirty) // 이거면 업데이트 해야 되네 
+		{
+			mapManager.RebuildChunkMesh(usedChunks[i]);
+		}
+
+		const std::vector<Vector3>& blockLocalPositions = chunk.GetLocalPositions();
+		if (blockLocalPositions.size() == 0)
+		{
+			continue;
+		}
+
+		assert(blockLocalPositions.size() > 0);
+
+		ChunkKey key = MapManager::GetChunkKey(chunkPosition);
+		// size가 0도 아니고, dirty가 아니라면 이미 생성되어있고 업데이트 되어 있음
+		if (bIsDirty)
+		{
+			if (mChunkInstanceBuffers.contains(key) == false)
+			{
+				ID3D11Buffer* instanceBuffer = CreateInstanceBuffer(sizeof(Vector3) * Chunk::GetTotalChunkCount());
+				mChunkInstanceBuffers[key].Attach(instanceBuffer);
+			}
+			UpdateInstanceBuffer(mChunkInstanceBuffers[key].Get(), blockLocalPositions);
+		}
+
+
+		assert(mChunkInstanceBuffers.contains(key));
+		UpdateConstantBuffer(camera, Vector3(static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z)));
+		//UINT indexCount = sizeof(meshData.indices) / sizeof(UINT); // 36
+		UINT indexCount = 36;
+
+		ID3D11Buffer* instanceBuffer = mChunkInstanceBuffers[key].Get();
+		Render(mBlockVectexBuffer.Get(), mBlockIndexBuffer.Get(), indexCount, instanceBuffer, static_cast<UINT>(blockLocalPositions.size()));
+	}
+
+	//mDeviceContext->End(mPipelineQuery.Get());
+
+	//renderTime = timer.EndSection();
+	//printf("copy 연산 시간: %.3f ms\n", copyTime);
+	//printf("mapMemcopyTime 연산 시간: %.3f ms\n", mapMemcopyTime);
+	//printf("renderTime 연산 시간: %.3f ms\n", renderTime);
+	//printf("totalInstanceCount: %d\n", totalInstanceCount);
+
+	//D3D11_QUERY_DATA_PIPELINE_STATISTICS stats;
+	//while (mDeviceContext->GetData(mPipelineQuery.Get(), &stats, sizeof(D3D11_QUERY_DATA_PIPELINE_STATISTICS), 0) == S_FALSE)
+	//{
+	//	Sleep(0);
+	//}
+
+	//printf("\n========== [GPU Pipeline Statistics] ==========\n");
+	//// 입력 단계
+	//printf("Input Assembler Vertices:    %llu\n", stats.IAVertices);
+	//printf("Input Assembler Primitives:  %llu\n", stats.IAPrimitives);
+
+	//// 쉐이더 실행 단계
+	//printf("Vertex Shader Invocations:   %llu\n", stats.VSInvocations);
+	//printf("Geometry Shader Invocations: %llu\n", stats.GSInvocations);
+	//printf("Pixel Shader Invocations:    %llu\n", stats.PSInvocations);
+
+	//// 래스터라이저 단계
+	//printf("Clipper Invocations:         %llu\n", stats.CInvocations);
+	//printf("Clipper Primitives:          %llu\n", stats.CPrimitives);
+
+	//printf("Draw Call:                   %llu\n", drawCallCount);
+	//printf("Total Instance Count:        %llu\n", totalInstanceCount);
+	//printf("===============================================\n");
+
+
+	Present();
+}
+
 void Renderer::Present()
 {
-	mSwapChain->Present(1, 0);
+	//mSwapChain->Present(1, 0);
+	mSwapChain->Present(0, 0);
 }
 
 void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount)
@@ -57,30 +166,28 @@ void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UIN
 void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position)
 {
 	XMMATRIX world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * XMMatrixTranslation(position.x, position.y, position.z);
-
-	XMMATRIX view = camera.GetViewMatrix();
-
-	//XMMATRIX testView = XMMatrixLookAtLH(
-	//    XMVectorSet(3, 3, -5, 0), // Eye (카메라 위치)
-	//    XMVectorSet(0, 0, 0, 0),   // At (바라보는 곳)
-	//    XMVectorSet(0, 1, 0, 0)    // Up
-	//);
-
-	DXGI_SWAP_CHAIN_DESC desc{};
-	mSwapChain->GetDesc(&desc);
-
-	XMMATRIX proj = camera.GetProjectionMatrix();
-	//XMMATRIX testProj = XMMatrixPerspectiveFovLH(XM_PIDIV4, 1008.0 / 981.f, 0.1f, 1000.0f);
-	XMMATRIX wvp = world * view * proj;
-	//XMMATRIX wvp = world * testView * testProj;
+	XMMATRIX viewProj = camera.GetViewProjectionMatrix();
+	XMMATRIX wvp = world * viewProj;
 
 	WVPMatrix cb{};
 	XMStoreFloat4x4(&cb.WorldViewProj, XMMatrixTranspose(wvp)); // 중요
 
-	mDeviceContext->UpdateSubresource(mConstantBuffer, 0, nullptr, &cb, 0, 0);
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	mDeviceContext->Map(mConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	memcpy(mappedResource.pData, &cb, sizeof(WVPMatrix));
+	mDeviceContext->Unmap(mConstantBuffer, 0);
+
+	//mDeviceContext->UpdateSubresource(mConstantBuffer, 0, nullptr, &cb, 0, 0);
 
 	// b0로 바인딩 (HLSL register(b0)와 맞춰야 함)
 	mDeviceContext->VSSetConstantBuffers(0, 1, &mConstantBuffer);
+
+}
+
+void Renderer::OnDisableChunk(const ChunkKey key)
+{
+	// 청크에 블록이 없는 경우엔 캐시를 갖고 있지 않다.
+	mChunkInstanceBuffers.erase(key);
 }
 
 void Renderer::Create(HWND hWnd)
@@ -95,6 +202,10 @@ void Renderer::Create(HWND hWnd)
 	CreateConstantBuffer();
 	CreateTextureAndSRV();
 	CreateSamplerState();
+
+	CreateVertexAndIndexBufferFromBlockMesh();
+
+	CreateQuery();
 }
 
 void Renderer::Prepare()
@@ -136,8 +247,14 @@ void Renderer::CreateSwapChainAndDevice(HWND hWnd)
 	swapchaindesc.Windowed = TRUE; // 창 모드
 	swapchaindesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // 스왑 방식
 
-	D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
-		D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG,
+
+	UINT flag = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
+#ifdef _DEBUG
+	flag = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG;
+#endif // DEBUG
+
+
+	D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flag,
 		featurelevels, ARRAYSIZE(featurelevels), D3D11_SDK_VERSION,
 		&swapchaindesc, &mSwapChain, &mDevice, nullptr, &mDeviceContext);
 
@@ -163,7 +280,6 @@ void Renderer::CreateFrameBufferAndRTV()
 	assert(mFrameBuffer != nullptr);
 
 	mDevice->CreateRenderTargetView(mFrameBuffer, &desc, &mRenderTargetView);
-
 	assert(mRenderTargetView != nullptr);
 }
 
@@ -207,6 +323,7 @@ void Renderer::CreateDepthStencilState()
 	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;           // 더 작은(가까운) 것만 합격
 
 	mDevice->CreateDepthStencilState(&dsDesc, &mDepthState);
+	assert(mDepthState != nullptr);
 }
 
 void Renderer::CreateRaterizerState()
@@ -253,11 +370,14 @@ void Renderer::CreateShaders()
 void Renderer::CreateConstantBuffer()
 {
 	D3D11_BUFFER_DESC desc{};
-	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+	//desc.Usage = D3D11_USAGE_DEFAULT;
+
 	desc.ByteWidth = sizeof(WVPMatrix);
 	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 	mDevice->CreateBuffer(&desc, nullptr, &mConstantBuffer);
+	assert(mConstantBuffer != nullptr);
 }
 
 ID3D11Buffer* Renderer::CreateBlockMeshVertexBuffer(const BlockMeshData* mesh)
@@ -269,7 +389,7 @@ ID3D11Buffer* Renderer::CreateBlockMeshVertexBuffer(const BlockMeshData* mesh)
 
 ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 {
-	assert(instances.size() != 0);
+	assert(byteWidth != 0);
 	// 3D11_USAGE_DYNAMIC과 DISCARD 써야한다고 함
 
 	D3D11_BUFFER_DESC instanceBufferDesc = {};
@@ -284,7 +404,7 @@ ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 	ID3D11Buffer* instanceBuffer;
 
 	mDevice->CreateBuffer(&instanceBufferDesc, nullptr, &instanceBuffer);
-
+	assert(instanceBuffer != nullptr);
 	return instanceBuffer;
 }
 
@@ -293,9 +413,7 @@ void Renderer::UpdateInstanceBuffer(ID3D11Buffer* instanceBuffer, const std::vec
 	D3D11_MAPPED_SUBRESOURCE mapped;
 	mDeviceContext->Map(instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
-	D3D11_BUFFER_DESC desc;
-	instanceBuffer->GetDesc(&desc);
-	memcpy(mapped.pData, positions.data(), desc.ByteWidth);
+	memcpy(mapped.pData, positions.data(), positions.size() * sizeof(Vector3));
 	mDeviceContext->Unmap(instanceBuffer, 0);
 }
 
@@ -312,6 +430,7 @@ ID3D11Buffer* Renderer::CreateVertexBuffer(const void* vertexDataPtr, const UINT
 	ID3D11Buffer* vertexBuffer;
 
 	mDevice->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &vertexBuffer);
+	assert(vertexBuffer != nullptr);
 	return vertexBuffer;
 }
 
@@ -331,6 +450,7 @@ ID3D11Buffer* Renderer::CreateIndexBuffer(const BlockMeshData* mesh)
 	ID3D11Buffer* indexBuffer;
 
 	mDevice->CreateBuffer(&indexBufferDesc, &indexBufferSRD, &indexBuffer);
+	assert(indexBuffer != nullptr);
 	return indexBuffer;
 }
 
@@ -357,6 +477,32 @@ void Renderer::ReleaseBuffer(ID3D11Buffer* buffer)
 {
 	buffer->Release();
 }
+
+void Renderer::CreateVertexAndIndexBufferFromBlockMesh()
+{
+	BlockMeshData meshData;
+
+	ID3D11Buffer* vertexBuffer = CreateBlockMeshVertexBuffer(&meshData);
+	ID3D11Buffer* indexBuffer = CreateIndexBuffer(&meshData);
+
+	mBlockVectexBuffer.Attach(vertexBuffer);
+	mBlockIndexBuffer.Attach(indexBuffer);
+}
+
+void Renderer::CreateQuery()
+{
+
+	// 2. 쿼리 객체 생성 (초기화 시 1회 실행)
+	D3D11_QUERY_DESC queryDesc;
+	queryDesc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
+	queryDesc.MiscFlags = 0;
+
+	mDevice->CreateQuery(&queryDesc, mPipelineQuery.GetAddressOf());
+}
+
+
+
+
 
 void Renderer::Release()
 {

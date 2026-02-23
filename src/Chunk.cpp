@@ -4,9 +4,12 @@
 #include "FastNoiseLite.h"
 #include "MapManager.h"
 
+
 void Chunk::Init(const IVector3 chunkPosition)
 {
 	mChunkPosition = chunkPosition;
+	mbIsDirty = true;
+	mLocalPositions.reserve(GetTotalChunkCount());
 
 	FastNoiseLite noise;
 	noise.SetSeed(GetChunkSeed2D());
@@ -32,8 +35,11 @@ void Chunk::Init(const IVector3 chunkPosition)
 	}
 }
 
-void Chunk::GetBlockPositions(std::vector<Vector3>& outWorldPositions) const
+void Chunk::RebuildLocalPositions()
 {
+	assert(mbIsDirty);
+
+	mLocalPositions.clear();
 	for (int32_t z = 0; z < CHUNK_SIZE; ++z)
 	{
 		for (int32_t x = 0; x < CHUNK_SIZE; ++x)
@@ -42,7 +48,7 @@ void Chunk::GetBlockPositions(std::vector<Vector3>& outWorldPositions) const
 			{
 				if (mGrid[z][x][y])
 				{
-					outWorldPositions.push_back(
+					mLocalPositions.push_back(
 						Vector3(
 							static_cast<float>(x),
 							static_cast<float>(y),
@@ -53,6 +59,7 @@ void Chunk::GetBlockPositions(std::vector<Vector3>& outWorldPositions) const
 			}
 		}
 	}
+	mbIsDirty = false;
 }
 
 int Chunk::GetChunkSeed2D() const
@@ -84,5 +91,9 @@ void Chunk::RemoveBlockAt(const Vector3 blockPosition)
 	assert(localPos.x >= 0 && localPos.x < CHUNK_SIZE
 		&& localPos.y >= 0 && localPos.y < CHUNK_SIZE
 		&& localPos.z >= 0 && localPos.z < CHUNK_SIZE);
+
+	assert(mGrid[localPos.z][localPos.x][localPos.y]);
+
 	mGrid[localPos.z][localPos.x][localPos.y] = false;
+	mbIsDirty = true;
 }

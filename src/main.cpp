@@ -2,6 +2,12 @@
 //#include <stdlib.h>
 //#include <crtdbg.h>
 
+
+// 콘솔 출력 
+#pragma comment(linker, "/subsystem:console")
+#pragma comment(linker, "/entry:WinMainCRTStartup")
+#include <iostream>
+
 #include <windows.h>
 #include <cassert>
 #include <string>
@@ -11,6 +17,8 @@
 #include "InputManager.h"
 #include "Timer.h"
 #include "MapManager.h"
+
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -56,16 +64,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	renderer.Create(hWnd);
 	renderer.PreparePipeline();
 
-	BlockMeshData meshData;
-
-	// VertexBuffer 생성하기
-	ID3D11Buffer* vertexBuffer = renderer.CreateBlockMeshVertexBuffer(&meshData);
-	ID3D11Buffer* indexBuffer = renderer.CreateIndexBuffer(&meshData);
-	ID3D11Buffer* instanceBuffer = renderer.CreateInstanceBuffer(sizeof(Vector3) * Chunk::GetTotalChunkCount());
+	//ID3D11Buffer* instanceBuffer = renderer.CreateInstanceBuffer(sizeof(Vector3) * Chunk::GetTotalChunkCount());
 
 	InputManager inputManager;
 	Camera camera(Vector3(5, 0, -50), Vector3());
-
 
 	Timer timer;
 	timer.Reset();
@@ -75,6 +77,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		timer.Tick();
 		std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
 
+		std::cout << " FPS:" << timer.GetFPS() << std::endl;
 
 		SetWindowText(hWnd, title.c_str());
 
@@ -108,65 +111,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		// 나중에 경계를 제대로 잡아야 할 거 같다.
 		
 		MapManager& mapManager = MapManager::GetInstance();
-		mapManager.Update(camera);
+		mapManager.Update(camera, renderer);
 
-		// loadChunkMesh 
+		renderer.Update(camera);
 
-
-		const std::vector<const Chunk*> visibleChunks = mapManager.GetVisibleChunks();
-		std::vector<Vector3> blockPositions;
-		blockPositions.reserve(static_cast<size_t>(Chunk::GetChunkSize()) * Chunk::GetChunkSize() * Chunk::GetChunkSize());
-		for (const Chunk* chunk : visibleChunks)
-		{
-			IVector3 chunkPosition = chunk->GetChunkPosition();
-			renderer.UpdateConstantBuffer(camera, Vector3(static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z)));
-
-			chunk->GetBlockPositions(blockPositions);
-			if (blockPositions.size() == 0)
-			{
-				continue;
-			}
-			
-			renderer.UpdateInstanceBuffer(instanceBuffer, blockPositions);
-			UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
-			renderer.Render(vertexBuffer, indexBuffer, indexCount, instanceBuffer, static_cast<UINT>(blockPositions.size()));
-			blockPositions.clear();
-		}
-		
-
-		//int count = 0;
-		//for (int i = 0; i < mapManager.GetRowCount(); ++i)
-		//{
-		//	for (int j = 0; j < mapManager.GetColumnCount(); ++j)
-		//	{
-		//		for (int k = 0; k < mapManager.GetHightCount(); ++k)
-		//		{
-		//			if (mapManager.IsBlockAt(i, k, j) == false)
-		//			{
-		//				continue;
-		//			}
-
-		//			Vector3 cubePosition = Vector3(
-		//				static_cast<float>(i),
-		//				static_cast<float>(k),
-		//				static_cast<float>(j)
-		//			);
-
-		//			renderer.UpdateConstantBuffer(camera, cubePosition);
-		//			UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
-		//			renderer.Render(vertexBuffer, indexBuffer, indexCount);
-		//		}
-		//	}
-		//}
-
-		renderer.Present();
-		//renderer.UpdateConstantBuffer(camera, Vector3(0.f, 0.f, 0.f));
-		//UINT indexCount = sizeof(meshData.indices) / sizeof(UINT);
-		//renderer.Render(vertexBuffer, indexBuffer, indexCount);
 	}
 
-	renderer.ReleaseBuffer(indexBuffer);
-	renderer.ReleaseBuffer(vertexBuffer);
+	//renderer.ReleaseBuffer(instanceBuffer);
 	renderer.Release();
 
 

@@ -10,6 +10,8 @@ public:
 	void Reset();
 	float GetDeltaTime() const { return static_cast<float>(mDeltaTime); }
 	int GetFPS() const { return static_cast<int>(1.0 / mDeltaTime); }
+	void StartSection();
+	double EndSection() const;
 
 private:
 	double mSecondsPerCount;
@@ -17,6 +19,8 @@ private:
 	LARGE_INTEGER mPrevTime;
 	LARGE_INTEGER mCurrTime;
 	LARGE_INTEGER mFrequency;
+
+	LARGE_INTEGER mSectionStart;
 
 	double mDeltaTime;
 

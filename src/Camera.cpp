@@ -14,6 +14,7 @@ Camera::Camera(const Vector3 position, const Vector3 rotation)
 	, mbTransformDirty(false)
 {
 	CreatePjoectionMatrix();
+	CreateViewMatrix(Vector3(), Vector3(), 0.0f);
 }
 
 void Camera::Update(const InputManager& inputManager, const float deltaTime)
@@ -25,27 +26,7 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime)
 	if (position != Vector3::Zero || mouseMovement != Vector3::Zero)
 	{
 		mbTransformDirty = false;
-		const float sensitivity = 5.f;
-		mRotation.y += mouseMovement.x * sensitivity * deltaTime; // yaw 
-		mRotation.x = std::clamp(mRotation.x + mouseMovement.y * sensitivity * deltaTime, -89.9f, 89.9f); // pitch
-
-		Vector3 rotationRad = Vector3(
-			XMConvertToRadians(mRotation.x),
-			XMConvertToRadians(mRotation.y),
-			XMConvertToRadians(mRotation.z)
-		);
-
-		Quaternion q = Quaternion::CreateFromYawPitchRoll(rotationRad);
-		mBasis = Matrix::CreateFromQuaternion(q);
-
-		const float speed = 100.0f;
-
-		mPosition += position.x * mBasis.Right() * speed * deltaTime;
-		mPosition += position.y * mBasis.Up() * speed * deltaTime;
-		mPosition += position.z * GetForwardDirection() * speed * deltaTime;
-
-		Matrix world = mBasis * Matrix::CreateTranslation(mPosition);
-		mViewMatrix = world.Invert();
+		CreateViewMatrix(position, mouseMovement, deltaTime);
 	}
 
 	if (inputManager.IsLeftButtonDown())
@@ -73,6 +54,33 @@ void Camera::TryRemoveBlock() const
 			break;
 		}
 	}
+}
+
+void Camera::CreateViewMatrix(const Vector3 position, const Vector3 mouseMovement, const float deltaTime)
+{
+	const float sensitivity = 5.f;
+	mRotation.y += mouseMovement.x * sensitivity * deltaTime; // yaw 
+	mRotation.x = std::clamp(mRotation.x + mouseMovement.y * sensitivity * deltaTime, -89.9f, 89.9f); // pitch
+
+	Vector3 rotationRad = Vector3(
+		XMConvertToRadians(mRotation.x),
+		XMConvertToRadians(mRotation.y),
+		XMConvertToRadians(mRotation.z)
+	);
+
+	Quaternion q = Quaternion::CreateFromYawPitchRoll(rotationRad);
+	mBasis = Matrix::CreateFromQuaternion(q);
+
+	const float speed = 100.0f;
+
+	mPosition += position.x * mBasis.Right() * speed * deltaTime;
+	mPosition += position.y * mBasis.Up() * speed * deltaTime;
+	mPosition += position.z * GetForwardDirection() * speed * deltaTime;
+
+	Matrix world = mBasis * Matrix::CreateTranslation(mPosition);
+	mViewMatrix = world.Invert();
+
+	mViewProjMatrix = mViewMatrix * mProjMatrix;
 }
 
 void Camera::CreatePjoectionMatrix()

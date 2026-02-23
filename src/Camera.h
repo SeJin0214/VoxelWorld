@@ -18,6 +18,7 @@ public:
 	Vector3 GetPosition() const { return mPosition; }
 	Matrix GetViewMatrix() const { return mViewMatrix; }
 	Matrix GetProjectionMatrix() const { return mProjMatrix; }
+	Matrix GetViewProjectionMatrix() const { return mViewProjMatrix; }
 	Vector3 GetForwardDirection() const { return mBasis.Backward(); } // right-handed 를 기준으로 하는 함수
 	uint32_t GetRenderDistance() const { return mRenderDistance; }
 	bool HasTransformChanged() const { return mbTransformDirty; }
@@ -34,6 +35,8 @@ private:
 	Matrix mBasis;
 	Matrix mViewMatrix;
 	Matrix mProjMatrix;
+	Matrix mViewProjMatrix;
+
 
 	int32_t mRenderDistance;
 	bool mbTransformDirty;
@@ -43,4 +46,5 @@ private:
 
 	void TryRemoveBlock() const;
 	void CreatePjoectionMatrix();
+	void CreateViewMatrix(const Vector3 position, const Vector3 mouseMovement, const float deltaTime);
 };
