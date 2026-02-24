@@ -3,6 +3,7 @@
 #include "Chunk.h"
 #include "ChunkInfo.h"
 #include "Types.h"
+#include "MeshBuilder.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -18,10 +19,11 @@ public:
 	static IVector3 GetChunkPosition(const Vector3 position);
 	static ChunkKey GetChunkKey(const IVector3 chunkPosition);
 
+	MeshBuilder& GetMeshBuilder() { return mMeshBuilder; }
 	const std::vector<ChunkInfo>& GetUsedChunks() const { return mUsedChunks; }
 	const Chunk& GetChunk(const ChunkInfo& chunkInfo) const;
 
-	void RebuildChunkMesh(const ChunkInfo& chunkInfo);
+	void ClearDirty(const ChunkInfo& chunkInfo);
 
 	bool IsBlockAt(const Vector3 blockPosition) const;
 	void RemoveBlockAt(const Vector3 blockPosition);
@@ -41,6 +43,8 @@ private:
 	{
 		MEMORY_POOL_SIZE = 16384
 	};
+
+	MeshBuilder mMeshBuilder;
 
 	// 비트 연산으로 정수를 만드는 게 나을 듯
 	std::unordered_map<ChunkKey, int32_t> mChunks; // 탐색용

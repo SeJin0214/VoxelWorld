@@ -111,10 +111,10 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 	// 현재 청크 포지션을 기준으로 렌더 거리 내의 청크들을 스폰
 }
 
-void MapManager::RebuildChunkMesh(const ChunkInfo& chunkInfo)
+void MapManager::ClearDirty(const ChunkInfo& chunkInfo)
 {
 	assert(mChunks.find(GetChunkKey(chunkInfo.position)) != mChunks.end());
-	mChunkArray[chunkInfo.index].RebuildLocalPositions();
+	mChunkArray[chunkInfo.index].ClearDirty();
 }
 
 bool MapManager::IsMovedChunkPosition(const Camera& camera) const

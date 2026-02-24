@@ -131,6 +131,7 @@
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MapManager.cpp" />
+    <ClCompile Include="MeshBuilder.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ScreenManager.cpp" />
     <ClCompile Include="Logger.cpp" />
@@ -141,7 +142,8 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="ChunkInfo.h" />
-    <ClInclude Include="ChunkMesh.h" />
+    <ClInclude Include="MeshBuilder.h" />
+    <ClInclude Include="MeshData.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="IVector3.h" />

@@ -9,7 +9,6 @@ void Chunk::Init(const IVector3 chunkPosition)
 {
 	mChunkPosition = chunkPosition;
 	mbIsDirty = true;
-	mLocalPositions.reserve(GetTotalChunkCount());
 
 	FastNoiseLite noise;
 	noise.SetSeed(GetChunkSeed2D());
@@ -33,33 +32,6 @@ void Chunk::Init(const IVector3 chunkPosition)
 			}
 		}
 	}
-}
-
-void Chunk::RebuildLocalPositions()
-{
-	assert(mbIsDirty);
-
-	mLocalPositions.clear();
-	for (int32_t z = 0; z < CHUNK_SIZE; ++z)
-	{
-		for (int32_t x = 0; x < CHUNK_SIZE; ++x)
-		{
-			for (int32_t y = 0; y < CHUNK_SIZE; ++y)
-			{
-				if (mGrid[z][x][y])
-				{
-					mLocalPositions.push_back(
-						Vector3(
-							static_cast<float>(x),
-							static_cast<float>(y),
-							static_cast<float>(z)
-						)
-					);
-				}
-			}
-		}
-	}
-	mbIsDirty = false;
 }
 
 int Chunk::GetChunkSeed2D() const
@@ -97,3 +69,14 @@ void Chunk::RemoveBlockAt(const Vector3 blockPosition)
 	mGrid[localPos.z][localPos.x][localPos.y] = false;
 	mbIsDirty = true;
 }
+
+bool Chunk::IsAir(const uint32_t localX, const uint32_t localY, const uint32_t localZ) const
+{
+	if (localX < 0 || CHUNK_SIZE <= localX || localY < 0 || CHUNK_SIZE <= localY || localZ < 0 || CHUNK_SIZE <= localZ)
+	{
+		return true;
+	}
+
+	return !mGrid[localZ][localX][localY];
+}
+

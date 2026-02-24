@@ -71,6 +71,7 @@ void Renderer::Update(const Camera& camera)
 		bool bIsDirty = chunk.IsDirty();
 		if (bIsDirty) // 이거면 업데이트 해야 되네 
 		{
+			
 			mapManager.RebuildChunkMesh(usedChunks[i]);
 		}
 
