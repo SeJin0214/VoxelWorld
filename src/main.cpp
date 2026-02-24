@@ -18,8 +18,6 @@
 #include "Timer.h"
 #include "MapManager.h"
 
-
-
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	switch (message)

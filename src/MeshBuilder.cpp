@@ -3,7 +3,8 @@
 
 MeshBuilder::MeshBuilder()
 {
-	// reserve
+	mMeshData.mVertices.reserve(MAX_VERTEX_COUNT);
+	mMeshData.mIndices.reserve(MAX_INDEX_COUNT);
 }
 
 const MeshData& MeshBuilder::Build(const Chunk& chunk)
@@ -32,7 +33,7 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 	static_assert(dxdydz[static_cast<uint32_t>(Direction::Top)] == IVector3(0, 1, 0), "dxdydz Order Error!");
 	static_assert(dxdydz[static_cast<uint32_t>(Direction::Bottom)] == IVector3(0, -1, 0), "dxdydz Order Error!");
 
-	const uint32_t chunkSize = Chunk::GetChunkSize();
+	const int32_t chunkSize = Chunk::GetChunkSize();
 
 	for (int32_t z = 0; z < chunkSize; ++z)
 	{
@@ -56,4 +57,5 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 			}
 		}
 	}
+	return mMeshData;
 }

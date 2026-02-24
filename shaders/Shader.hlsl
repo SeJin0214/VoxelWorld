@@ -25,7 +25,7 @@ PS_INPUT mainVS(VS_INPUT input)
     output.position = float4(input.position + input.instancePos, 1.0f);
     output.position = mul(output.position, gWorldViewProj);
     output.uv = input.uv;
-    
+
     return output;
 }
 
@@ -34,6 +34,11 @@ SamplerState gSamp : register(s0);
 
 float4 mainPS(PS_INPUT input) : SV_TARGET
 {
+    if (input.uv.x < 0.0f)
+    {
+        return float4(1.0f, 0.0f, 0.0f, 1.0f);
+    }
+
     return gTex.Sample(gSamp, input.uv);
 }
 

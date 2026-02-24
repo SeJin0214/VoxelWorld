@@ -21,13 +21,14 @@ public:
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 	void Update(const Camera& camera);
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount);
+	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
+
 	void Create(HWND hWnd);
 	void Release();
 
 	ID3D11Buffer* CreateInstanceBuffer(const UINT byteWidth);
-	void UpdateInstanceBuffer(ID3D11Buffer* instanceBuffer, const std::vector<Vector3>& positions);
 
-	void ReleaseBuffer(ID3D11Buffer* vertexBuffer);
+
 
 	// 한 번만 세팅
 	void PreparePipeline();
@@ -67,11 +68,22 @@ private:
 	ID3D11ShaderResourceView* mShaderResouceView;
 	ID3D11SamplerState* mSamplerState;
 
-	ComPtr<ID3D11Buffer> mBlockVectexBuffer;
-	ComPtr<ID3D11Buffer> mBlockIndexBuffer;
+	//ComPtr<ID3D11Buffer> mBlockVectexBuffer;
+	//ComPtr<ID3D11Buffer> mBlockIndexBuffer;
 
-	// ComPtr로 하는 게 낫겠다.
-	std::unordered_map<ChunkKey, ComPtr<ID3D11Buffer>> mChunkInstanceBuffers;
+	struct ChunkMesh
+	{
+		// ComPtr로 하는 게 낫겠다.	
+		ComPtr<ID3D11Buffer> mVertexBuffer;
+		ComPtr<ID3D11Buffer> mIndexBuffer;
+		UINT mVertexBufferByteWidth = 0;
+		UINT mIndexBufferByteWidth = 0;
+		uint32_t mVertexCount = 0;
+		uint32_t mIndexCount = 0;
+	};
+
+	std::unordered_map<ChunkKey, ChunkMesh> mChunkInstanceBuffers;
+	ComPtr<ID3D11Buffer> mDebugRayVertexBuffer;
 
 	ComPtr<ID3D11Query> mPipelineQuery;
 
@@ -85,13 +97,15 @@ private:
 	void CreateTextureAndSRV();
 	void CreateSamplerState();
 
-
-	void CreateVertexAndIndexBufferFromBlockMesh();
-	ID3D11Buffer* CreateBlockMeshVertexBuffer(const BlockMeshData* mesh);
 	ID3D11Buffer* CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth);
-	ID3D11Buffer* CreateIndexBuffer(const BlockMeshData* mesh);
-
+	ID3D11Buffer* CreateDynamicVertexBuffer(const UINT byteWidth);
+	ID3D11Buffer* CreateDynamicIndexBuffer(const UINT byteWidth);
+	void UpdateDynamicBuffer(ID3D11Buffer* buffer, const void* dataPtr, size_t byteWidth);
+	void ReleaseBuffer(ID3D11Buffer* vertexBuffer);
+	void RenderDebugRay(const Camera& camera);
 
 	void CreateQuery();
-
 };
+
+
+

@@ -10,7 +10,7 @@
 Camera::Camera(const Vector3 position, const Vector3 rotation)
 	: mPosition(position)
 	, mRotation(rotation)
-	, mRenderDistance(80)
+	, mRenderDistance(128)
 	, mbTransformDirty(false)
 {
 	CreatePjoectionMatrix();

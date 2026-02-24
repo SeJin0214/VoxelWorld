@@ -8,6 +8,9 @@
 #include "MapManager.h"
 
 #include <iostream>
+#include <cmath>
+#include <vector>
+#include <limits>
 #include "Logger.h"
 #include "Timer.h"
 
@@ -52,6 +55,7 @@ void Renderer::Update(const Camera& camera)
 	BoundingFrustum frustumWorld;
 	frustum.Transform(frustumWorld, invView);
 
+	MeshBuilder& meshBuilder = mapManager.GetMeshBuilder();
 	for (uint32_t i = 0; i < usedChunks.size(); ++i)
 	{
 		// usedChunks[i] 가지고 frustum 컬링 판단하기
@@ -68,41 +72,85 @@ void Renderer::Update(const Camera& camera)
 			continue;
 		}
 
+		// 비어있는 애만 치우면 된다.
+		// 갖고 있지 않으면 생성해야 해.
+
+		// 반드시 업데이트 된 애를 그려야 해.
+		// 더러우면 build 하고, 새로 생성해
+		// 비어 있는 애는 그리면 안 되는데
+
+		// 비어 있는 애를 판단하는 로직이 필요하긴 해.
+		ChunkKey key = MapManager::GetChunkKey(chunkPosition);
+
 		bool bIsDirty = chunk.IsDirty();
 		if (bIsDirty) // 이거면 업데이트 해야 되네 
 		{
+			// 얘는 일회용이라 안 된다. 비어 있는 거 판단 안 된다.
+			const MeshData& newMeshData = meshBuilder.Build(chunk);
+			mapManager.ClearDirty(usedChunks[i]);
+
+			if (chunk.IsEmpty())
+			{
+				continue;
+			}
+
+			if (mChunkInstanceBuffers.contains(key) == false)
+			{
+				ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
+
+				// 크기만큼 만들고, 나중에 더 필요하면 2배로 증가시키기
+				chunkMesh.mVertexBufferByteWidth = static_cast<UINT>(newMeshData.mVertices.size() * sizeof(BlockVertex));
+				ID3D11Buffer* vertexBuffer = CreateDynamicVertexBuffer(chunkMesh.mVertexBufferByteWidth);
+
+				chunkMesh.mIndexBufferByteWidth = static_cast<UINT>(newMeshData.mIndices.size() * sizeof(UINT));
+				ID3D11Buffer* indexBuffer = CreateDynamicIndexBuffer(chunkMesh.mIndexBufferByteWidth);
+
+				chunkMesh.mVertexBuffer.Attach(vertexBuffer);
+				chunkMesh.mIndexBuffer.Attach(indexBuffer);
+			}
 			
-			mapManager.RebuildChunkMesh(usedChunks[i]);
+			// 새로 빌드된 애보다 vertexBuffer가 작으면 
+			ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
+			if (newMeshData.mVertices.size() * sizeof(BlockVertex) > chunkMesh.mVertexBufferByteWidth)
+			{
+				while (newMeshData.mVertices.size() * sizeof(BlockVertex) > chunkMesh.mVertexBufferByteWidth)
+				{
+					chunkMesh.mVertexBufferByteWidth *= 2;
+					chunkMesh.mIndexBufferByteWidth *= 2;
+				}
+				// 최대 사이즈
+				chunkMesh.mVertexBufferByteWidth = min(chunkMesh.mVertexBufferByteWidth, sizeof(BlockVertex) * MeshBuilder::GetMaxVertexCount());
+				chunkMesh.mIndexBufferByteWidth = min(chunkMesh.mIndexBufferByteWidth, sizeof(UINT) * MeshBuilder::GetMaxIndexCount());
+
+				// 기존의 것 삭제하기
+				chunkMesh.mVertexBuffer = nullptr;
+				chunkMesh.mIndexBuffer = nullptr;
+
+				ID3D11Buffer* vertexBuffer = CreateDynamicVertexBuffer(chunkMesh.mVertexBufferByteWidth);
+				ID3D11Buffer* indexBuffer = CreateDynamicIndexBuffer(chunkMesh.mIndexBufferByteWidth);
+				chunkMesh.mVertexBuffer.Attach(vertexBuffer);
+				chunkMesh.mIndexBuffer.Attach(indexBuffer);
+			}
+
+			chunkMesh.mVertexCount = static_cast<UINT>(newMeshData.mVertices.size());
+			chunkMesh.mIndexCount = static_cast<UINT>(newMeshData.mIndices.size());
+
+			UpdateDynamicBuffer(chunkMesh.mVertexBuffer.Get(), newMeshData.mVertices.data(), chunkMesh.mVertexCount * sizeof(BlockVertex));
+			UpdateDynamicBuffer(chunkMesh.mIndexBuffer.Get(), newMeshData.mIndices.data(), chunkMesh.mIndexCount * sizeof(UINT));
 		}
 
-		const std::vector<Vector3>& blockLocalPositions = chunk.GetLocalPositions();
-		if (blockLocalPositions.size() == 0)
+		if (chunk.IsEmpty())
 		{
 			continue;
 		}
 
-		assert(blockLocalPositions.size() > 0);
-
-		ChunkKey key = MapManager::GetChunkKey(chunkPosition);
-		// size가 0도 아니고, dirty가 아니라면 이미 생성되어있고 업데이트 되어 있음
-		if (bIsDirty)
-		{
-			if (mChunkInstanceBuffers.contains(key) == false)
-			{
-				ID3D11Buffer* instanceBuffer = CreateInstanceBuffer(sizeof(Vector3) * Chunk::GetTotalChunkCount());
-				mChunkInstanceBuffers[key].Attach(instanceBuffer);
-			}
-			UpdateInstanceBuffer(mChunkInstanceBuffers[key].Get(), blockLocalPositions);
-		}
-
-
+		assert(chunk.IsDirty() == false);
 		assert(mChunkInstanceBuffers.contains(key));
-		UpdateConstantBuffer(camera, Vector3(static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z)));
-		//UINT indexCount = sizeof(meshData.indices) / sizeof(UINT); // 36
-		UINT indexCount = 36;
 
-		ID3D11Buffer* instanceBuffer = mChunkInstanceBuffers[key].Get();
-		Render(mBlockVectexBuffer.Get(), mBlockIndexBuffer.Get(), indexCount, instanceBuffer, static_cast<UINT>(blockLocalPositions.size()));
+		UpdateConstantBuffer(camera, Vector3(static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z)));
+
+		ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
+		Render(chunkMesh.mVertexBuffer.Get(), chunkMesh.mIndexBuffer.Get(), chunkMesh.mIndexCount);
 	}
 
 	//mDeviceContext->End(mPipelineQuery.Get());
@@ -137,6 +185,7 @@ void Renderer::Update(const Camera& camera)
 	//printf("Total Instance Count:        %llu\n", totalInstanceCount);
 	//printf("===============================================\n");
 
+	//RenderDebugRay(camera);
 
 	Present();
 }
@@ -162,6 +211,19 @@ void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UIN
 	// (인덱스 수, 인스턴스 수, 시작 인덱스, 시작 버텍스, 시작 인스턴스)
 	mDeviceContext->DrawIndexedInstanced(indexCount, instanceCount, 0, 0, 0);
 	//mDeviceContext->DrawIndexed(indexCount, 0, 0);
+}
+
+void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount)
+{
+	const UINT stride = sizeof(BlockVertex);
+	const UINT offset = 0;
+	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
+	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
+	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+
+	mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
+	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
+	mDeviceContext->DrawIndexed(indexCount, 0, 0);
 }
 
 void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position)
@@ -204,7 +266,7 @@ void Renderer::Create(HWND hWnd)
 	CreateTextureAndSRV();
 	CreateSamplerState();
 
-	CreateVertexAndIndexBufferFromBlockMesh();
+	//CreateVertexAndIndexBufferFromBlockMesh();
 
 	CreateQuery();
 }
@@ -381,13 +443,6 @@ void Renderer::CreateConstantBuffer()
 	assert(mConstantBuffer != nullptr);
 }
 
-ID3D11Buffer* Renderer::CreateBlockMeshVertexBuffer(const BlockMeshData* mesh)
-{
-	const UINT byteWidth = sizeof(mesh->vertices);
-	const void* vertexDataPtr = mesh->vertices;
-	return CreateVertexBuffer(vertexDataPtr, byteWidth);
-}
-
 ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 {
 	assert(byteWidth != 0);
@@ -409,13 +464,13 @@ ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 	return instanceBuffer;
 }
 
-void Renderer::UpdateInstanceBuffer(ID3D11Buffer* instanceBuffer, const std::vector<Vector3>& positions)
+void Renderer::UpdateDynamicBuffer(ID3D11Buffer* buffer, const void* dataPtr, size_t byteWidth)
 {
 	D3D11_MAPPED_SUBRESOURCE mapped;
-	mDeviceContext->Map(instanceBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
+	mDeviceContext->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
-	memcpy(mapped.pData, positions.data(), positions.size() * sizeof(Vector3));
-	mDeviceContext->Unmap(instanceBuffer, 0);
+	memcpy(mapped.pData, dataPtr, byteWidth);
+	mDeviceContext->Unmap(buffer, 0);
 }
 
 ID3D11Buffer* Renderer::CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth)
@@ -433,26 +488,6 @@ ID3D11Buffer* Renderer::CreateVertexBuffer(const void* vertexDataPtr, const UINT
 	mDevice->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &vertexBuffer);
 	assert(vertexBuffer != nullptr);
 	return vertexBuffer;
-}
-
-
-
-ID3D11Buffer* Renderer::CreateIndexBuffer(const BlockMeshData* mesh)
-{
-	const UINT byteWidth = sizeof(mesh->indices);
-
-	D3D11_BUFFER_DESC indexBufferDesc = {};
-	indexBufferDesc.ByteWidth = byteWidth;
-	indexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;  // 디바이스 버퍼인듯
-	indexBufferDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-
-	D3D11_SUBRESOURCE_DATA indexBufferSRD = { mesh->indices };
-
-	ID3D11Buffer* indexBuffer;
-
-	mDevice->CreateBuffer(&indexBufferDesc, &indexBufferSRD, &indexBuffer);
-	assert(indexBuffer != nullptr);
-	return indexBuffer;
 }
 
 void Renderer::CreateTextureAndSRV()
@@ -479,17 +514,6 @@ void Renderer::ReleaseBuffer(ID3D11Buffer* buffer)
 	buffer->Release();
 }
 
-void Renderer::CreateVertexAndIndexBufferFromBlockMesh()
-{
-	BlockMeshData meshData;
-
-	ID3D11Buffer* vertexBuffer = CreateBlockMeshVertexBuffer(&meshData);
-	ID3D11Buffer* indexBuffer = CreateIndexBuffer(&meshData);
-
-	mBlockVectexBuffer.Attach(vertexBuffer);
-	mBlockIndexBuffer.Attach(indexBuffer);
-}
-
 void Renderer::CreateQuery()
 {
 
@@ -502,9 +526,80 @@ void Renderer::CreateQuery()
 }
 
 
+// 일반화 가능
+ID3D11Buffer* Renderer::CreateDynamicVertexBuffer(const UINT byteWidth)
+{
+	D3D11_BUFFER_DESC desc{};
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+
+	desc.ByteWidth = byteWidth;
+	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	ID3D11Buffer* vertexBuffer = nullptr;
+	mDevice->CreateBuffer(&desc, nullptr, &vertexBuffer);
+	assert(vertexBuffer != nullptr);
+
+	return vertexBuffer;
+}
+
+ID3D11Buffer* Renderer::CreateDynamicIndexBuffer(const UINT byteWidth)
+{
+	D3D11_BUFFER_DESC desc{};
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+
+	desc.ByteWidth = byteWidth;
+	desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+
+	ID3D11Buffer* indexBuffer = nullptr;
+	mDevice->CreateBuffer(&desc, nullptr, &indexBuffer);
+	assert(indexBuffer != nullptr);
+
+	return indexBuffer;
+}
 
 
 
+
+void Renderer::RenderDebugRay(const Camera& camera)
+{
+	if (mDebugRayVertexBuffer.Get() == nullptr)
+	{
+		mDebugRayVertexBuffer.Attach(CreateDynamicVertexBuffer(sizeof(BlockVertex) * 2));
+	}
+
+	Vector3 origin = camera.GetPosition();
+	Vector3 dir = camera.GetForwardDirection();
+	if (dir.LengthSquared() < 1e-6f)
+	{
+		return;
+	}
+
+	dir.Normalize();
+	Vector3 end = origin + dir * 6.0f;
+
+	BlockVertex rayVerts[2] =
+	{
+		{ origin, Vector3::Zero, Vector2(-1.0f, 0.0f) },
+		{ end, Vector3::Zero, Vector2(-1.0f, 0.0f) },
+	};
+
+	UpdateDynamicBuffer(mDebugRayVertexBuffer.Get(), rayVerts, sizeof(rayVerts));
+	UpdateConstantBuffer(camera, Vector3::Zero);
+
+	const UINT stride = sizeof(BlockVertex);
+	const UINT offset = 0;
+	ID3D11Buffer* vb = mDebugRayVertexBuffer.Get();
+
+	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
+	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
+	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+	mDeviceContext->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
+	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
+	mDeviceContext->Draw(2, 0);
+	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+}
 void Renderer::Release()
 {
 	assert(mDevice != nullptr);
@@ -558,3 +653,7 @@ void Renderer::Release()
 	mDevice->Release();
 	mDevice = nullptr;
 }
+
+
+
+

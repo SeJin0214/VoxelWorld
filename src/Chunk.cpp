@@ -1,12 +1,13 @@
 #include <cassert>
+#include <cstring>
 #include "Chunk.h"
 #include "Logger.h"
 #include "FastNoiseLite.h"
 #include "MapManager.h"
 
-
 void Chunk::Init(const IVector3 chunkPosition)
 {
+	mActiveBlockCount = 0;
 	mChunkPosition = chunkPosition;
 	mbIsDirty = true;
 
@@ -28,7 +29,15 @@ void Chunk::Init(const IVector3 chunkPosition)
 			for (int32_t y = 0; y < CHUNK_SIZE; ++y)
 			{
 				int32_t currentWorldY = startY + y;
-				mGrid[z][x][y] = (currentWorldY <= worldHeight);
+				if (currentWorldY <= worldHeight)
+				{
+					mGrid[z][x][y] = true;
+					++mActiveBlockCount;
+				}
+				else
+				{
+					mGrid[z][x][y] = false;
+				}
 			}
 		}
 	}
@@ -68,9 +77,10 @@ void Chunk::RemoveBlockAt(const Vector3 blockPosition)
 
 	mGrid[localPos.z][localPos.x][localPos.y] = false;
 	mbIsDirty = true;
+	DecreaseActiveBlockCount();
 }
 
-bool Chunk::IsAir(const uint32_t localX, const uint32_t localY, const uint32_t localZ) const
+bool Chunk::IsAir(const int32_t localX, const int32_t localY, const int32_t localZ) const
 {
 	if (localX < 0 || CHUNK_SIZE <= localX || localY < 0 || CHUNK_SIZE <= localY || localZ < 0 || CHUNK_SIZE <= localZ)
 	{
@@ -78,5 +88,11 @@ bool Chunk::IsAir(const uint32_t localX, const uint32_t localY, const uint32_t l
 	}
 
 	return !mGrid[localZ][localX][localY];
+}
+
+void Chunk::DecreaseActiveBlockCount()
+{
+	assert(mActiveBlockCount != 0);
+	--mActiveBlockCount;
 }
 

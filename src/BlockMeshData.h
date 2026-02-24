@@ -1,4 +1,5 @@
 #pragma once
+
 #include "BlockVertex.h"
 #include "IVector3.h"
 #include <cstdint>
@@ -43,8 +44,8 @@ private:
 
 	static constexpr uint32_t UV_COUNT = 4;
 
-	// static_assert로 검증하기 위해 IVector3로 저장
-	// 실제 사용할 땐, x(u), y(v)만 사용
+    // Keep UV data in IVector3 for compile-time static_assert checks.
+    // At runtime, only x(u) and y(v) are used.
 	static constexpr IVector3 uvs[UV_COUNT] =
 	{
 		{ 0, 0, 0 },
@@ -60,11 +61,10 @@ private:
 
 	static constexpr uint32_t POINT_COUNT = 4;
 
-	// float(-0.5f, 0.5f) 값을 constexpr static_assert로 검증하기 위해 2배 스케일 정수로 저장.
-	// 실제 float 좌표는 (value * 0.5f)로 사용하면 된다.
+    // Store positions as integer coordinates scaled by 2 for static_assert validation.
+    // Runtime float position = value * 0.5f.
 	static constexpr IVector3 verticesScaledBy2[FACE_COUNT][POINT_COUNT] =
 	{
-		// 시계방향 생성
 		{ // +Z (Front)
 			{-1,  1,  1}, // 0
 			{ 1,  1,  1}, // 1
