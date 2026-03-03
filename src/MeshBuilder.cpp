@@ -3,16 +3,16 @@
 
 MeshBuilder::MeshBuilder()
 {
-	mMeshData.mVertices.reserve(MAX_VERTEX_COUNT);
-	mMeshData.mIndices.reserve(MAX_INDEX_COUNT);
+	mMeshData.Vertices.reserve(MAX_VERTEX_COUNT);
+	mMeshData.Indices.reserve(MAX_INDEX_COUNT);
 }
 
 const MeshData& MeshBuilder::Build(const Chunk& chunk)
 {
 	assert(chunk.IsDirty());
 
-	mMeshData.mVertices.clear();
-	mMeshData.mIndices.clear();
+	mMeshData.Vertices.clear();
+	mMeshData.Indices.clear();
 	// chunk의 블록이 air인지
 
 	constexpr uint32_t size = static_cast<uint32_t>(Direction::Size);
@@ -34,6 +34,7 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 	static_assert(dxdydz[static_cast<uint32_t>(Direction::Bottom)] == IVector3(0, -1, 0), "dxdydz Order Error!");
 
 	const int32_t chunkSize = Chunk::GetChunkSize();
+	const IVector3 chunkWorldPosition = chunk.GetChunkPosition();
 
 	for (int32_t z = 0; z < chunkSize; ++z)
 	{
@@ -52,7 +53,7 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 					{
 						continue;
 					}
-					BlockMeshData::AddFace(mMeshData.mVertices, mMeshData.mIndices, static_cast<Direction>(i), IVector3(x, y, z));
+					BlockMeshData::AddFace(mMeshData.Vertices, mMeshData.Indices, static_cast<Direction>(i), IVector3(x, y, z), chunkWorldPosition);
 				}
 			}
 		}

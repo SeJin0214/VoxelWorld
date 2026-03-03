@@ -5,6 +5,6 @@
 
 struct MeshData
 {
-	std::vector<BlockVertex> mVertices;
-	std::vector<uint32_t> mIndices;
+	std::vector<BlockVertex> Vertices;
+	std::vector<uint32_t> Indices;
 };

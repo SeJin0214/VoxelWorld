@@ -13,6 +13,7 @@
 #include <limits>
 #include "Logger.h"
 #include "Timer.h"
+#include "ScopedProfiler.h"
 
 using namespace DirectX;
 
@@ -34,17 +35,25 @@ Renderer::Renderer()
 	, mShaderResouceView(nullptr)
 	, mSamplerState(nullptr)
 {
-
 }
 
 void Renderer::Update(const Camera& camera)
 {
+	Timer timer;
+	double buildTime = 0.0f;
+	//double createTime = 0.0f;
+	//double updateTime = 0.0f;
+	//double presentTime = 0.0f;
+	//size_t updateCount = 0;
+
+	//mDeviceContext->Begin(mPipelineQuery.Get());
+
+	size_t drawCallCount = 0;
+
 	MapManager& mapManager = MapManager::GetInstance();
 	const std::vector<ChunkInfo> usedChunks = mapManager.GetUsedChunks();
 
-	mDeviceContext->Begin(mPipelineQuery.Get());
-
-	// GetWorldFrustum으로 뽑아내자
+	// GetWorldFrustum으로 뽑아내자, 렌더러에서 
 	BoundingFrustum frustum;
 	BoundingFrustum::CreateFromMatrix(frustum, camera.GetProjectionMatrix());
 
@@ -55,6 +64,8 @@ void Renderer::Update(const Camera& camera)
 	BoundingFrustum frustumWorld;
 	frustum.Transform(frustumWorld, invView);
 
+	UpdateConstantBuffer(camera, Vector3(0.f, 0.f, 0.f));
+
 	MeshBuilder& meshBuilder = mapManager.GetMeshBuilder();
 	for (uint32_t i = 0; i < usedChunks.size(); ++i)
 	{
@@ -62,6 +73,7 @@ void Renderer::Update(const Camera& camera)
 		const Chunk& chunk = mapManager.GetChunk(usedChunks[i]);
 		IVector3 chunkPosition = chunk.GetChunkPosition();
 
+		// 함수로 묶기 
 		BoundingBox aabb;
 		BoundingBox::CreateFromPoints(aabb,
 			XMVECTOR{ static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z) },
@@ -72,94 +84,111 @@ void Renderer::Update(const Camera& camera)
 			continue;
 		}
 
-		// 비어있는 애만 치우면 된다.
-		// 갖고 있지 않으면 생성해야 해.
-
-		// 반드시 업데이트 된 애를 그려야 해.
-		// 더러우면 build 하고, 새로 생성해
-		// 비어 있는 애는 그리면 안 되는데
-
-		// 비어 있는 애를 판단하는 로직이 필요하긴 해.
-		ChunkKey key = MapManager::GetChunkKey(chunkPosition);
-
-		bool bIsDirty = chunk.IsDirty();
-		if (bIsDirty) // 이거면 업데이트 해야 되네 
+		if (chunk.IsEmpty()) // 바로 판단 가능
 		{
-			// 얘는 일회용이라 안 된다. 비어 있는 거 판단 안 된다.
-			const MeshData& newMeshData = meshBuilder.Build(chunk);
-			mapManager.ClearDirty(usedChunks[i]);
+			continue;
+		}
 
-			if (chunk.IsEmpty())
+		// 프러스텀에 보이고, 비어있지 않고, 바뀌었다면 생성한다.
+		ChunkKey key = MapManager::GetChunkKey(chunkPosition);
+		if (chunk.IsDirty())
+		{
+			// Mesh 업로드 큐에 넣고 
+			// continue
+
+			// TryUpdateChunkMesh() 거리에 벗어날 때, 업데이트 되면 안 됨...
+			ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
+
+			bool bUploading = (chunkMesh.PendintVertexState != PoolClass::None && mVertexBufferPool.IsExhaustedPool(chunkMesh.PendintVertexState)
+					|| chunkMesh.PendintIndexState != PoolClass::None && mIndexBufferPool.IsExhaustedPool(chunkMesh.PendintIndexState));
+			if (bUploading)
+			{
+				// 이러면 나중에 업데이트 
+				continue;
+			}
+			
+			timer.StartSection();
+			const MeshData& newMeshData = meshBuilder.Build(chunk); // 이것도 업로드 큐..?
+			buildTime += timer.EndSectionMS();	
+
+			const uint32_t newVertexBytes = static_cast<uint32_t>(newMeshData.Vertices.size()) * VERTEX_BYTE;
+			const uint32_t newIndexBytes = static_cast<uint32_t>(newMeshData.Indices.size()) * INDEX_BYTE;
+			PoolClass vertexPoolClass = BufferPool::GetFitSizeClass(newVertexBytes);
+			PoolClass indexPoolClass = BufferPool::GetFitSizeClass(newIndexBytes);
+
+			bool bNeedResizeVertex = BufferPool::GetByte(chunkMesh.VertexBuffer.Class) < newVertexBytes;
+			bool bNeedVertex = bNeedResizeVertex && mVertexBufferPool.IsExhaustedPool(vertexPoolClass);
+			if (bNeedVertex)
+			{
+				EnqueueVertexBufferCreation(vertexPoolClass);
+				chunkMesh.PendintVertexState = vertexPoolClass;
+			}
+
+			bool bNeedResizeIndex = BufferPool::GetByte(chunkMesh.IndexBuffer.Class) < newIndexBytes;
+			bool bNeedIndex = bNeedResizeIndex && mIndexBufferPool.IsExhaustedPool(indexPoolClass);
+			if (bNeedIndex)
+			{
+				EnqueueIndexBufferCreation(indexPoolClass);
+				chunkMesh.PendintIndexState = indexPoolClass;
+			}
+
+			if (bNeedVertex || bNeedIndex)
 			{
 				continue;
 			}
 
-			if (mChunkInstanceBuffers.contains(key) == false)
+
+			assert(mVertexBufferPool.IsExhaustedPool(vertexPoolClass) == false && mIndexBufferPool.IsExhaustedPool(indexPoolClass) == false);
+			if (bNeedResizeVertex)
 			{
-				ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
-
-				// 크기만큼 만들고, 나중에 더 필요하면 2배로 증가시키기
-				chunkMesh.mVertexBufferByteWidth = static_cast<UINT>(newMeshData.mVertices.size() * sizeof(BlockVertex));
-				ID3D11Buffer* vertexBuffer = CreateDynamicVertexBuffer(chunkMesh.mVertexBufferByteWidth);
-
-				chunkMesh.mIndexBufferByteWidth = static_cast<UINT>(newMeshData.mIndices.size() * sizeof(UINT));
-				ID3D11Buffer* indexBuffer = CreateDynamicIndexBuffer(chunkMesh.mIndexBufferByteWidth);
-
-				chunkMesh.mVertexBuffer.Attach(vertexBuffer);
-				chunkMesh.mIndexBuffer.Attach(indexBuffer);
-			}
-			
-			// 새로 빌드된 애보다 vertexBuffer가 작으면 
-			ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
-			if (newMeshData.mVertices.size() * sizeof(BlockVertex) > chunkMesh.mVertexBufferByteWidth)
-			{
-				while (newMeshData.mVertices.size() * sizeof(BlockVertex) > chunkMesh.mVertexBufferByteWidth)
+				if (chunkMesh.VertexBuffer.Class != PoolClass::None)
 				{
-					chunkMesh.mVertexBufferByteWidth *= 2;
-					chunkMesh.mIndexBufferByteWidth *= 2;
+					assert(chunkMesh.VertexBuffer.Class != PoolClass::Size);
+					mVertexBufferPool.DespawnBuffer(chunkMesh.VertexBuffer);
 				}
-				// 최대 사이즈
-				chunkMesh.mVertexBufferByteWidth = min(chunkMesh.mVertexBufferByteWidth, sizeof(BlockVertex) * MeshBuilder::GetMaxVertexCount());
-				chunkMesh.mIndexBufferByteWidth = min(chunkMesh.mIndexBufferByteWidth, sizeof(UINT) * MeshBuilder::GetMaxIndexCount());
-
-				// 기존의 것 삭제하기
-				chunkMesh.mVertexBuffer = nullptr;
-				chunkMesh.mIndexBuffer = nullptr;
-
-				ID3D11Buffer* vertexBuffer = CreateDynamicVertexBuffer(chunkMesh.mVertexBufferByteWidth);
-				ID3D11Buffer* indexBuffer = CreateDynamicIndexBuffer(chunkMesh.mIndexBufferByteWidth);
-				chunkMesh.mVertexBuffer.Attach(vertexBuffer);
-				chunkMesh.mIndexBuffer.Attach(indexBuffer);
+				mVertexBufferPool.SpawnBuffer(vertexPoolClass, chunkMesh.VertexBuffer);
+				chunkMesh.PendintVertexState = PoolClass::None;
 			}
 
-			chunkMesh.mVertexCount = static_cast<UINT>(newMeshData.mVertices.size());
-			chunkMesh.mIndexCount = static_cast<UINT>(newMeshData.mIndices.size());
+			if (bNeedResizeIndex)
+			{
+				if (chunkMesh.IndexBuffer.Class != PoolClass::None)
+				{
+					assert(chunkMesh.IndexBuffer.Class != PoolClass::Size);
+					mIndexBufferPool.DespawnBuffer(chunkMesh.IndexBuffer);
+				}
+				mIndexBufferPool.SpawnBuffer(indexPoolClass, chunkMesh.IndexBuffer);
+				chunkMesh.PendintIndexState = PoolClass::None;
+			}
 
-			UpdateDynamicBuffer(chunkMesh.mVertexBuffer.Get(), newMeshData.mVertices.data(), chunkMesh.mVertexCount * sizeof(BlockVertex));
-			UpdateDynamicBuffer(chunkMesh.mIndexBuffer.Get(), newMeshData.mIndices.data(), chunkMesh.mIndexCount * sizeof(UINT));
-		}
+			chunkMesh.VertexCount = static_cast<UINT>(newMeshData.Vertices.size());
+			chunkMesh.IndexCount = static_cast<UINT>(newMeshData.Indices.size());
 
-		if (chunk.IsEmpty())
-		{
-			continue;
+			assert(chunkMesh.VertexBuffer.Buffer != nullptr && chunkMesh.IndexBuffer.Buffer != nullptr);
+
+			UpdateDynamicBuffer(chunkMesh.VertexBuffer.Buffer.Get(), newMeshData.Vertices.data(), static_cast<size_t>(chunkMesh.VertexCount) * VERTEX_BYTE);
+			UpdateDynamicBuffer(chunkMesh.IndexBuffer.Buffer.Get(), newMeshData.Indices.data(), static_cast<size_t>(chunkMesh.IndexCount) * INDEX_BYTE);
+
+			mapManager.ClearDirty(usedChunks[i]);
 		}
 
 		assert(chunk.IsDirty() == false);
 		assert(mChunkInstanceBuffers.contains(key));
 
-		UpdateConstantBuffer(camera, Vector3(static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z)));
+		// 얘는 많이 일어남
+		// 그렇다고 프레임 프리즈가 일어나진 않았었음
 
 		ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
-		Render(chunkMesh.mVertexBuffer.Get(), chunkMesh.mIndexBuffer.Get(), chunkMesh.mIndexCount);
+		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
+		++drawCallCount;
 	}
 
+	//timer.StartSection();
+	constexpr uint32_t MAX_CREATE_COUNT_PER_FRAME = 20;
+	ProcessBufferCreationQueue(MAX_CREATE_COUNT_PER_FRAME);
+	//createTime += timer.EndSectionMS();
+	//mVertexBufferPool.printBufferSize();
 	//mDeviceContext->End(mPipelineQuery.Get());
-
-	//renderTime = timer.EndSection();
-	//printf("copy 연산 시간: %.3f ms\n", copyTime);
-	//printf("mapMemcopyTime 연산 시간: %.3f ms\n", mapMemcopyTime);
-	//printf("renderTime 연산 시간: %.3f ms\n", renderTime);
-	//printf("totalInstanceCount: %d\n", totalInstanceCount);
 
 	//D3D11_QUERY_DATA_PIPELINE_STATISTICS stats;
 	//while (mDeviceContext->GetData(mPipelineQuery.Get(), &stats, sizeof(D3D11_QUERY_DATA_PIPELINE_STATISTICS), 0) == S_FALSE)
@@ -167,27 +196,37 @@ void Renderer::Update(const Camera& camera)
 	//	Sleep(0);
 	//}
 
-	//printf("\n========== [GPU Pipeline Statistics] ==========\n");
-	//// 입력 단계
-	//printf("Input Assembler Vertices:    %llu\n", stats.IAVertices);
-	//printf("Input Assembler Primitives:  %llu\n", stats.IAPrimitives);
-
-	//// 쉐이더 실행 단계
-	//printf("Vertex Shader Invocations:   %llu\n", stats.VSInvocations);
-	//printf("Geometry Shader Invocations: %llu\n", stats.GSInvocations);
-	//printf("Pixel Shader Invocations:    %llu\n", stats.PSInvocations);
-
-	//// 래스터라이저 단계
-	//printf("Clipper Invocations:         %llu\n", stats.CInvocations);
-	//printf("Clipper Primitives:          %llu\n", stats.CPrimitives);
-
-	//printf("Draw Call:                   %llu\n", drawCallCount);
-	//printf("Total Instance Count:        %llu\n", totalInstanceCount);
-	//printf("===============================================\n");
+	// LogPipelineState(state, drawCallCount);
 
 	//RenderDebugRay(camera);
 
+	//timer.StartSection();
+	ScopedProfiler sp("Update", 20.0);
+
 	Present();
+
+
+	//presentTime += timer.EndSectionMS();
+	
+
+	//std::cout << "[1ms < Performance Log]\n";
+	//if (buildTime > 1.f)
+	//{
+	//	std::cout << "Build Time:   " << buildTime << "ms\n";
+	//}
+	//if (createTime > 1.f)
+	//{
+	//	std::cout << "Create Time:  " << createTime << "ms\n";
+	//}
+	//if (updateTime > 1.f)
+	//	std::cout << "Update Time:  " << updateTime << "ms\n";
+	//if (presentTime > 1.f)
+	//	std::cout << "Present Time: " << presentTime << "ms\n";
+
+	//std::cout << "update count: " << updateCount << "\n";
+
+	//std::cout << "------------------" << std::endl;
+
 }
 
 void Renderer::Present()
@@ -198,7 +237,7 @@ void Renderer::Present()
 
 void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount)
 {
-	const UINT stride[2] = { sizeof(BlockVertex), sizeof(Vector3) };
+	const UINT stride[2] = { VERTEX_BYTE, sizeof(Vector3) };
 	const UINT offset[2] = { 0, 0 };
 	ID3D11Buffer* buffers[2] = { vertexBuffer, instanceBuffer };
 	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
@@ -215,11 +254,9 @@ void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UIN
 
 void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount)
 {
-	const UINT stride = sizeof(BlockVertex);
+	const UINT stride = VERTEX_BYTE;
 	const UINT offset = 0;
-	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
-	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
-	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+
 
 	mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
@@ -244,12 +281,26 @@ void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position
 
 	// b0로 바인딩 (HLSL register(b0)와 맞춰야 함)
 	mDeviceContext->VSSetConstantBuffers(0, 1, &mConstantBuffer);
-
 }
 
 void Renderer::OnDisableChunk(const ChunkKey key)
 {
 	// 청크에 블록이 없는 경우엔 캐시를 갖고 있지 않다.
+	if (mChunkInstanceBuffers.contains(key) == false)
+	{
+		return;
+	}
+	ChunkMesh& mesh = mChunkInstanceBuffers[key];
+	if (mesh.VertexBuffer.Class != PoolClass::None)
+	{
+		assert(mesh.VertexBuffer.Class != PoolClass::Size);
+		mVertexBufferPool.DespawnBuffer(mesh.VertexBuffer);
+	}
+	if (mesh.IndexBuffer.Class != PoolClass::None)
+	{
+		assert(mesh.IndexBuffer.Class != PoolClass::Size);
+		mIndexBufferPool.DespawnBuffer(mesh.IndexBuffer);
+	}
 	mChunkInstanceBuffers.erase(key);
 }
 
@@ -269,6 +320,8 @@ void Renderer::Create(HWND hWnd)
 	//CreateVertexAndIndexBufferFromBlockMesh();
 
 	CreateQuery();
+
+	CreateBufferPool();
 }
 
 void Renderer::Prepare()
@@ -277,6 +330,10 @@ void Renderer::Prepare()
 
 	mDeviceContext->ClearRenderTargetView(mRenderTargetView, clearColor);
 	mDeviceContext->ClearDepthStencilView(mDepthView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+
+	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
+	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
+	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 }
 
 void Renderer::PreparePipeline()
@@ -466,6 +523,7 @@ ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 
 void Renderer::UpdateDynamicBuffer(ID3D11Buffer* buffer, const void* dataPtr, size_t byteWidth)
 {
+	assert(buffer != nullptr && dataPtr != nullptr);
 	D3D11_MAPPED_SUBRESOURCE mapped;
 	mDeviceContext->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
 
@@ -473,12 +531,12 @@ void Renderer::UpdateDynamicBuffer(ID3D11Buffer* buffer, const void* dataPtr, si
 	mDeviceContext->Unmap(buffer, 0);
 }
 
-ID3D11Buffer* Renderer::CreateVertexBuffer(const void* vertexDataPtr, const UINT byteWidth)
+ID3D11Buffer* Renderer::CreateStaticVertexBuffer(const void* vertexDataPtr, const UINT byteWidth)
 {
 	assert(byteWidth != 0);
 	D3D11_BUFFER_DESC vertexBufferDesc = {};
 	vertexBufferDesc.ByteWidth = byteWidth;
-	vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
+	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 
 	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { vertexDataPtr };
@@ -525,6 +583,60 @@ void Renderer::CreateQuery()
 	mDevice->CreateQuery(&queryDesc, mPipelineQuery.GetAddressOf());
 }
 
+void Renderer::LogPipelineState(D3D11_QUERY_DATA_PIPELINE_STATISTICS& stats, size_t drawCallCount)
+{
+	printf("\n========== [GPU Pipeline Statistics] ==========\n");
+	// 입력 단계
+	printf("Input Assembler Vertices:    %llu\n", stats.IAVertices);
+	printf("Input Assembler Primitives:  %llu\n", stats.IAPrimitives);
+
+	// 쉐이더 실행 단계
+	printf("Vertex Shader Invocations:   %llu\n", stats.VSInvocations);
+	printf("Pixel Shader Invocations:    %llu\n", stats.PSInvocations);
+
+	printf("Draw Call:                   %llu\n", drawCallCount);
+	printf("===============================================\n");
+
+	static UINT64 maxVertices = 0;
+	static UINT64 maxPrimitives = 0;
+	static UINT64 maxVSInvocations = 0;
+	static UINT64 maxPSInvocations = 0;
+	static size_t maxDrawCallCount = 0;
+
+	maxVertices = max(maxVertices, stats.IAVertices);
+	maxPrimitives = max(maxPrimitives, stats.IAPrimitives);
+	maxVSInvocations = max(maxVSInvocations, stats.VSInvocations);
+	maxPSInvocations = max(maxPSInvocations, stats.PSInvocations);
+	maxDrawCallCount = max(maxDrawCallCount, drawCallCount);
+
+	static UINT64 minVertices = INT_MAX;
+	static UINT64 minPrimitives = INT_MAX;
+	static UINT64 minVSInvocations = INT_MAX;
+	static UINT64 minPSInvocations = INT_MAX;
+	static size_t minDrawCallCount = INT_MAX;
+
+	minVertices = min(minVertices, stats.IAVertices);
+	minPrimitives = min(minPrimitives, stats.IAPrimitives);
+	minVSInvocations = min(minVSInvocations, stats.VSInvocations);
+	minPSInvocations = min(minPSInvocations, stats.PSInvocations);
+	minDrawCallCount = min(minDrawCallCount, drawCallCount);
+
+	printf("\n========== [GPU Pipeline MIN Max Statistics] ==========\n");
+	printf("max Vertices:               %llu\n", maxVertices);
+	printf("min Vertices:               %llu\n", minVertices);
+
+	printf("max Primitives:             %llu\n", maxPrimitives);
+	printf("min Primitives:             %llu\n", minPrimitives);
+
+	printf("max VS Invocations:         %llu\n", maxVSInvocations);
+	printf("min VS Invocations:         %llu\n", minVSInvocations);
+	printf("max PS Invocations:         %llu\n", maxPSInvocations);
+	printf("min PS Invocations:         %llu\n", minPSInvocations);
+
+	printf("max Draw Call:              %llu\n", maxDrawCallCount);
+	printf("min Draw Call:              %llu\n", minDrawCallCount);
+	printf("===============================================\n");
+}
 
 // 일반화 가능
 ID3D11Buffer* Renderer::CreateDynamicVertexBuffer(const UINT byteWidth)
@@ -566,7 +678,7 @@ void Renderer::RenderDebugRay(const Camera& camera)
 {
 	if (mDebugRayVertexBuffer.Get() == nullptr)
 	{
-		mDebugRayVertexBuffer.Attach(CreateDynamicVertexBuffer(sizeof(BlockVertex) * 2));
+		mDebugRayVertexBuffer.Attach(CreateDynamicVertexBuffer(VERTEX_BYTE * 2));
 	}
 
 	Vector3 origin = camera.GetPosition();
@@ -588,7 +700,7 @@ void Renderer::RenderDebugRay(const Camera& camera)
 	UpdateDynamicBuffer(mDebugRayVertexBuffer.Get(), rayVerts, sizeof(rayVerts));
 	UpdateConstantBuffer(camera, Vector3::Zero);
 
-	const UINT stride = sizeof(BlockVertex);
+	const UINT stride = VERTEX_BYTE;
 	const UINT offset = 0;
 	ID3D11Buffer* vb = mDebugRayVertexBuffer.Get();
 
@@ -600,6 +712,7 @@ void Renderer::RenderDebugRay(const Camera& camera)
 	mDeviceContext->Draw(2, 0);
 	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 }
+
 void Renderer::Release()
 {
 	assert(mDevice != nullptr);
@@ -654,6 +767,78 @@ void Renderer::Release()
 	mDevice = nullptr;
 }
 
+void Renderer::CreateBufferPool()
+{
+	const SizeClass* sizeClasses = BufferPool::GetBufferSizeClasses();
 
+	for (uint32_t i = 0; i < BufferPool::GetPoolClassCount(); ++i)
+	{
+		for (uint32_t j = 0; j < sizeClasses[i].Capacity; ++j)
+		{
+			PoolClass poolClass = static_cast<PoolClass>(i);
+			AllocateMoreAtVertexPool(poolClass);
+			AllocateMoreAtIndexPool(poolClass);
+		}
+	}
+}
 
+void Renderer::AllocateMoreAtVertexPool(const PoolClass poolClass)
+{
+	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
+	ID3D11Buffer* vertexBuffer = CreateDynamicVertexBuffer(BufferPool::GetByte(poolClass));
 
+	PooledBuffer vb;
+	vb.Class = poolClass;
+	vb.Buffer.Attach(vertexBuffer);
+	mVertexBufferPool.DespawnBuffer(vb);
+}
+
+void Renderer::AllocateMoreAtIndexPool(const PoolClass poolClass)
+{
+	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
+
+	const SizeClass* sizeClasses = BufferPool::GetBufferSizeClasses();
+	ID3D11Buffer* indexBuffer = CreateDynamicIndexBuffer(BufferPool::GetByte(poolClass));
+
+	PooledBuffer ib;
+	ib.Class = poolClass;
+	ib.Buffer.Attach(indexBuffer);
+	mIndexBufferPool.DespawnBuffer(ib);
+}
+
+void Renderer::ProcessBufferCreationQueue(const uint32_t maxCreateCountPerFrame)
+{
+	uint32_t indexCount = min(static_cast<uint32_t>(mDeferredIndexBufferCreationQueue.size()), 10);
+	uint32_t vertexCount = min(static_cast<uint32_t>(mDeferredVertexBufferCreationQueue.size()), maxCreateCountPerFrame - indexCount);
+	assert(vertexCount <= maxCreateCountPerFrame);
+
+	uint32_t i = 0;
+	while (i < indexCount)
+	{
+		PoolClass poolClass = mDeferredIndexBufferCreationQueue.front();
+		mDeferredIndexBufferCreationQueue.pop();
+		AllocateMoreAtIndexPool(poolClass);
+		++i;
+	}
+
+	i = 0;
+	while (i < vertexCount)
+	{
+		PoolClass poolClass = mDeferredVertexBufferCreationQueue.front();
+		mDeferredVertexBufferCreationQueue.pop();
+		AllocateMoreAtVertexPool(poolClass);
+		++i;
+	}
+}
+
+void Renderer::EnqueueVertexBufferCreation(const PoolClass poolClass)
+{
+	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
+	mDeferredVertexBufferCreationQueue.push(poolClass);
+}
+
+void Renderer::EnqueueIndexBufferCreation(const PoolClass poolClass)
+{
+	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
+	mDeferredIndexBufferCreationQueue.push(poolClass);
+}

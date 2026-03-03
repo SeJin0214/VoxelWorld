@@ -1,6 +1,6 @@
 #include "BlockMeshData.h"
 
-void BlockMeshData::AddFace(std::vector<BlockVertex>& vertices, std::vector<uint32_t>& indices, Direction direction, IVector3 position)
+void BlockMeshData::AddFace(std::vector<BlockVertex>& vertices, std::vector<uint32_t>& indices, const Direction direction, const IVector3 position, const IVector3 chunkWorldPosition)
 {
 	assert(static_cast<uint32_t>(direction) < static_cast<uint32_t>(Direction::Size));
 
@@ -12,9 +12,9 @@ void BlockMeshData::AddFace(std::vector<BlockVertex>& vertices, std::vector<uint
 		BlockVertex p
 		{
 			.position = Vector3(
-				static_cast<float>(position.x) + static_cast<float>(verticesScaledBy2[dir][i].x) * 0.5f, 
-				static_cast<float>(position.y) + static_cast<float>(verticesScaledBy2[dir][i].y) * 0.5f,
-				static_cast<float>(position.z) + static_cast<float>(verticesScaledBy2[dir][i].z) * 0.5f),
+				static_cast<float>(chunkWorldPosition.x + position.x) + static_cast<float>(verticesScaledBy2[dir][i].x) * 0.5f,
+				static_cast<float>(chunkWorldPosition.y + position.y) + static_cast<float>(verticesScaledBy2[dir][i].y) * 0.5f,
+				static_cast<float>(chunkWorldPosition.z + position.z) + static_cast<float>(verticesScaledBy2[dir][i].z) * 0.5f),
 			.normal = Vector3(static_cast<float>(normals[dir].x), static_cast<float>(normals[dir].y), static_cast<float>(normals[dir].z)),
 			.uv = Vector2(static_cast<float>(uvs[i].x), static_cast<float>(uvs[i].y))
 		};

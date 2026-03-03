@@ -37,6 +37,10 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 {
 	mLastChunkPosition = GetChunkPosition(camera.GetPosition());
 	uint32_t renderDistance = camera.GetRenderDistance();
+
+
+
+	// StreamingPolicy로 분리
 	int32_t chunkSize = Chunk::GetChunkSize();
 	
 	int32_t loadedChunkCount = renderDistance / chunkSize + 1; // 큐브 18개 보여야 하는데, 왼쪽 끝에 서있으면 17개만 보여지니까, +1 해주기

@@ -17,6 +17,8 @@
 #include "InputManager.h"
 #include "Timer.h"
 #include "MapManager.h"
+#include "ScopedProfiler.h"
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
@@ -62,20 +64,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	renderer.Create(hWnd);
 	renderer.PreparePipeline();
 
-	//ID3D11Buffer* instanceBuffer = renderer.CreateInstanceBuffer(sizeof(Vector3) * Chunk::GetTotalChunkCount());
-
 	InputManager inputManager;
 	Camera camera(Vector3(5, 0, -50), Vector3());
 
 	Timer timer;
 	timer.Reset();
-	bool bIsExited = false;
-	while (bIsExited == false)
+
+
+	timer.InitFPSStats();
+	while (true)
 	{
 		timer.Tick();
 		std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
 
-		std::cout << " FPS:" << timer.GetFPS() << std::endl;
+		//std::cout << " FPS:" << timer.GetFPS() << std::endl;
+
+		timer.UpdateFPSStats();
 
 		SetWindowText(hWnd, title.c_str());
 
@@ -91,7 +95,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 			if (msg.message == WM_QUIT)
 			{
-				bIsExited = true;
 				break;
 			}
 		}
@@ -112,10 +115,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		mapManager.Update(camera, renderer);
 
 		renderer.Update(camera);
-
+		timer.RenderFPSLog();
 	}
 
-	//renderer.ReleaseBuffer(instanceBuffer);
 	renderer.Release();
 
 
@@ -124,3 +126,4 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	return 0;
 }
+

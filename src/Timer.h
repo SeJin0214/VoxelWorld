@@ -1,17 +1,25 @@
 #pragma once
 #include <Windows.h>
+#include "Types.h"
 
 class Timer
 {
 public:
 	Timer();
 	~Timer() = default;
+	Timer(const Timer& other) = delete;
+	Timer& operator=(const Timer& rhs) = delete;
+
 	void Tick();
 	void Reset();
 	float GetDeltaTime() const { return static_cast<float>(mDeltaTime); }
 	int GetFPS() const { return static_cast<int>(1.0 / mDeltaTime); }
 	void StartSection();
-	double EndSection() const;
+	double EndSectionMS() const;
+
+	void InitFPSStats();
+	void UpdateFPSStats();
+	void RenderFPSLog() const;
 
 private:
 	double mSecondsPerCount;
@@ -24,6 +32,6 @@ private:
 
 	double mDeltaTime;
 
-	Timer(const Timer& other) = delete;
-	Timer& operator=(const Timer& rhs) = delete;
+	uint32_t mFpsStats[16];
+
 };
