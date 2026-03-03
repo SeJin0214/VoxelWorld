@@ -110,6 +110,15 @@
     <ClInclude Include="ScopedProfiler.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="StreamingPolicy.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="ChunkMath.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
+    <ClInclude Include="WorldConfig.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\Shader.hlsl">

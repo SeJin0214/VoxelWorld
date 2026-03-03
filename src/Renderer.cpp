@@ -14,6 +14,7 @@
 #include "Logger.h"
 #include "Timer.h"
 #include "ScopedProfiler.h"
+#include "ChunkMath.h"
 
 using namespace DirectX;
 
@@ -90,7 +91,7 @@ void Renderer::Update(const Camera& camera)
 		}
 
 		// 프러스텀에 보이고, 비어있지 않고, 바뀌었다면 생성한다.
-		ChunkKey key = MapManager::GetChunkKey(chunkPosition);
+		ChunkKey key = ChunkMath::ToChunkKey(chunkPosition);
 		if (chunk.IsDirty())
 		{
 			// Mesh 업로드 큐에 넣고 
@@ -181,6 +182,7 @@ void Renderer::Update(const Camera& camera)
 		ChunkMesh& chunkMesh = mChunkInstanceBuffers[key];
 		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
 		++drawCallCount;
+		
 	}
 
 	//timer.StartSection();
@@ -204,29 +206,6 @@ void Renderer::Update(const Camera& camera)
 	ScopedProfiler sp("Update", 20.0);
 
 	Present();
-
-
-	//presentTime += timer.EndSectionMS();
-	
-
-	//std::cout << "[1ms < Performance Log]\n";
-	//if (buildTime > 1.f)
-	//{
-	//	std::cout << "Build Time:   " << buildTime << "ms\n";
-	//}
-	//if (createTime > 1.f)
-	//{
-	//	std::cout << "Create Time:  " << createTime << "ms\n";
-	//}
-	//if (updateTime > 1.f)
-	//	std::cout << "Update Time:  " << updateTime << "ms\n";
-	//if (presentTime > 1.f)
-	//	std::cout << "Present Time: " << presentTime << "ms\n";
-
-	//std::cout << "update count: " << updateCount << "\n";
-
-	//std::cout << "------------------" << std::endl;
-
 }
 
 void Renderer::Present()

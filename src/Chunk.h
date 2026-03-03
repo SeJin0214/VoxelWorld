@@ -2,6 +2,7 @@
 #include <unordered_map>
 #include <cstdint>
 #include "IVector3.h"
+#include "WorldConfig.h"
 
 using namespace DirectX::SimpleMath;
 
@@ -11,7 +12,6 @@ class Chunk
 public:
 	Chunk() = default;
 	~Chunk() = default;
-	static int32_t GetChunkSize() { return CHUNK_SIZE; }
 	static int32_t GetTotalChunkCount() { return CHUNK_SIZE * CHUNK_SIZE * CHUNK_SIZE; }
 
 	bool IsEmpty() const { return mActiveBlockCount == 0; }
@@ -26,7 +26,7 @@ public:
 	bool IsAir(const int32_t localX, const int32_t localY, const int32_t localZ) const;
 
 private:
-	static constexpr int32_t CHUNK_SIZE = 16;
+	static constexpr int32_t CHUNK_SIZE = WorldConfig::CHUNK_SIZE;
 	
 	IVector3 mChunkPosition; // 청크 월드 좌표
 	bool mGrid[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE]; // z x y  -> y가 마지막에 있어야 빛 투과 계산에 유리하다고 함

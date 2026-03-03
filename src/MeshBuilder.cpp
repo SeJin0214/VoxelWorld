@@ -1,5 +1,6 @@
 #include "MeshBuilder.h"
 #include "BlockMeshData.h"
+#include "WorldConfig.h"
 
 MeshBuilder::MeshBuilder()
 {
@@ -33,7 +34,7 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 	static_assert(dxdydz[static_cast<uint32_t>(Direction::Top)] == IVector3(0, 1, 0), "dxdydz Order Error!");
 	static_assert(dxdydz[static_cast<uint32_t>(Direction::Bottom)] == IVector3(0, -1, 0), "dxdydz Order Error!");
 
-	const int32_t chunkSize = Chunk::GetChunkSize();
+	const int32_t chunkSize = WorldConfig::CHUNK_SIZE;
 	const IVector3 chunkWorldPosition = chunk.GetChunkPosition();
 
 	for (int32_t z = 0; z < chunkSize; ++z)

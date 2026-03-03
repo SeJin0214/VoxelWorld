@@ -4,6 +4,7 @@
 #include "Logger.h"
 #include "FastNoiseLite.h"
 #include "MapManager.h"
+#include "WorldConfig.h"
 
 void Chunk::Init(const IVector3 chunkPosition)
 {
@@ -16,7 +17,7 @@ void Chunk::Init(const IVector3 chunkPosition)
 	noise.SetNoiseType(FastNoiseLite::NoiseType::NoiseType_Perlin);
 	noise.SetFrequency(0.2f);
 
-	const int32_t amplitude = MapManager::GetWorldSizeY();
+	const int32_t amplitude = WorldConfig::WORLD_SIZE_Y;
 	int32_t startY = static_cast<int32_t>(mChunkPosition.y);
 
 	for (int32_t z = 0; z < CHUNK_SIZE; ++z)

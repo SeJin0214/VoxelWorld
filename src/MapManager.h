@@ -16,9 +16,6 @@ class MapManager
 public:
 	static MapManager& GetInstance() { return instance; }
 
-	static IVector3 GetChunkPosition(const Vector3 position);
-	static ChunkKey GetChunkKey(const IVector3 chunkPosition);
-
 	MeshBuilder& GetMeshBuilder() { return mMeshBuilder; }
 	const std::vector<ChunkInfo>& GetUsedChunks() const { return mUsedChunks; }
 	const Chunk& GetChunk(const ChunkInfo& chunkInfo) const;
@@ -29,14 +26,8 @@ public:
 	void RemoveBlockAt(const Vector3 blockPosition);
 	void Update(const Camera& camera, Renderer& renderer);
 
-	static int32_t GetWorldSizeZ() { return WORLD_SIZE_Z; }
-	static int32_t GetWorldSizeX() { return WORLD_SIZE_X; }
-	static int32_t GetWorldSizeY() { return WORLD_SIZE_Y; }
-
 private:
-	static constexpr int32_t WORLD_SIZE_Z = 16384; // 16384
-	static constexpr int32_t WORLD_SIZE_X = 16384; // 16384
-	static constexpr int32_t WORLD_SIZE_Y = 256; // 256
+
 	static MapManager instance;
 
 	enum 

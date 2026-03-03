@@ -148,10 +148,12 @@
     <ClInclude Include="BufferPool.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Chunk.h" />
+    <ClInclude Include="ChunkMath.h" />
     <ClInclude Include="ChunkInfo.h" />
     <ClInclude Include="MeshBuilder.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="ScopedProfiler.h" />
+    <ClInclude Include="StreamingPolicy.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="IVector3.h" />
@@ -161,6 +163,7 @@
     <ClInclude Include="ScreenManager.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="Timer.h" />
+    <ClInclude Include="WorldConfig.h" />
     <ClInclude Include="WVPMatrix.h" />
   </ItemGroup>
   <ItemGroup>

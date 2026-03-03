@@ -6,11 +6,11 @@
 #include "InputManager.h"
 #include "MapManager.h"
 #include "Logger.h"
+#include "WorldConfig.h"
 
 Camera::Camera(const Vector3 position, const Vector3 rotation)
 	: mPosition(position)
 	, mRotation(rotation)
-	, mRenderDistance(160)
 	, mbTransformDirty(false)
 {
 	CreatePjoectionMatrix();
@@ -42,7 +42,7 @@ void Camera::TryRemoveBlock() const
 	Vector3 forward = GetForwardDirection();
 	constexpr float STEP = 0.1f;
 	float o = 0.5f;
-	while (o < RANGE)
+	while (o < WorldConfig::RANGE)
 	{
 		Vector3 checkPos = mPosition + forward * o;
 		o += STEP;
@@ -85,11 +85,9 @@ void Camera::CreateViewMatrix(const Vector3 position, const Vector3 mouseMovemen
 
 void Camera::CreatePjoectionMatrix()
 {
-	constexpr float FOV_RADIAN = DirectX::XMConvertToRadians(FOV_DEGREES);
+	constexpr float FOV_RADIAN = DirectX::XMConvertToRadians(WorldConfig::FOV_DEGREES);
 	const float ASPECT_RATIO = ScreenManager::GetInstance().GetClientAreaAspectRatio();
-	constexpr float NEAR_Z = 0.1f;
-	constexpr float FAR_Z = 500.0f; // 렌더 거리만큼 줄이기
 
-	mProjMatrix = DirectX::XMMatrixPerspectiveFovLH(FOV_RADIAN, ASPECT_RATIO, NEAR_Z, FAR_Z);
+	mProjMatrix = DirectX::XMMatrixPerspectiveFovLH(FOV_RADIAN, ASPECT_RATIO, WorldConfig::NEAR_Z, WorldConfig::FAR_Z);
 }
 
