@@ -9,9 +9,9 @@ public:
 	static IVector3 ToChunkPos(const Vector3 position)
 	{
 		constexpr int32_t CHUNK_SIZE = WorldConfig::CHUNK_SIZE;
-		int32_t x = static_cast<int32_t>(position.x) / CHUNK_SIZE * CHUNK_SIZE;
-		int32_t y = static_cast<int32_t>(position.y) / CHUNK_SIZE * CHUNK_SIZE;
-		int32_t z = static_cast<int32_t>(position.z) / CHUNK_SIZE * CHUNK_SIZE;
+		int32_t x = (static_cast<int32_t>(position.x) >> 4) << 4;
+		int32_t y = (static_cast<int32_t>(position.y) >> 4) << 4;
+		int32_t z = (static_cast<int32_t>(position.z) >> 4) << 4;
 
 		assert(x % 16 == 0 && y % 16 == 0 && z % 16 == 0);
 

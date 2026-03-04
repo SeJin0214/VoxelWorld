@@ -71,15 +71,22 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	timer.Reset();
 
 
+	static uint32_t frameNumber = 0;
 	timer.InitFPSStats();
 	while (true)
 	{
+		++frameNumber;
 		timer.Tick();
 		std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
 
+		// 25ms 40FPS 
+		if (timer.GetFPS() <= 40)
+		{
+			std::cout << "FPS dropped to " << timer.GetFPS() << "!, frameNumber: " << frameNumber << std::endl;
+		}
 		//std::cout << " FPS:" << timer.GetFPS() << std::endl;
 
-		timer.UpdateFPSStats();
+		//timer.UpdateFPSStats();
 
 		SetWindowText(hWnd, title.c_str());
 
@@ -114,8 +121,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		MapManager& mapManager = MapManager::GetInstance();
 		mapManager.Update(camera, renderer);
 
-		renderer.Update(camera);
-		timer.RenderFPSLog();
+		renderer.Update(camera, deltaTime);
+		//timer.RenderFPSLog();
 	}
 
 	renderer.Release();

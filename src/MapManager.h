@@ -18,9 +18,11 @@ public:
 
 	MeshBuilder& GetMeshBuilder() { return mMeshBuilder; }
 	const std::vector<ChunkInfo>& GetUsedChunks() const { return mUsedChunks; }
+	bool HasChunk(const ChunkKey key) const { return mChunks.contains(key); }
 	const Chunk& GetChunk(const ChunkInfo& chunkInfo) const;
+	const Chunk& GetChunk(const ChunkKey key) const;
 
-	void ClearDirty(const ChunkInfo& chunkInfo);
+	void ClearDirty(const ChunkKey key);
 
 	bool IsBlockAt(const Vector3 blockPosition) const;
 	void RemoveBlockAt(const Vector3 blockPosition);

@@ -8,13 +8,17 @@
 #include <d3dcompiler.h>
 #include <wrl/client.h>
 #include <queue>
+#include <unordered_set>
 #include "BlockMeshData.h"
 #include "Camera.h"
 #include "Types.h"
 #include "BufferPool.h"
+#include "ChunkInfo.h"
+#include "ChunkMath.h"
 
 using std::vector;
 using std::queue;
+using std::unordered_set;
 using Microsoft::WRL::ComPtr;
 
 class Renderer
@@ -23,7 +27,7 @@ public:
 	Renderer();
 	void Present();
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
-	void Update(const Camera& camera);
+	void Update(const Camera& camera, const float deltaTime);
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount);
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 
@@ -47,12 +51,6 @@ public:
 
 
 private:
-	// 내부 선언
-	enum class MeshState
-	{
-		Ready,
-		Waiting,
-	};
 
 	struct ChunkMesh
 	{
@@ -60,7 +58,6 @@ private:
 		PooledBuffer IndexBuffer;
 		uint32_t VertexCount;
 		uint32_t IndexCount;
-		MeshState State;
 		PoolClass PendintVertexState;
 		PoolClass PendintIndexState;
 
@@ -70,7 +67,6 @@ private:
 			, IndexBuffer()
 			, VertexCount(0)
 			, IndexCount(0)
-			, State(MeshState::Ready)
 			, PendintVertexState(PoolClass::None)
 			, PendintIndexState(PoolClass::None)
 
@@ -104,7 +100,7 @@ private:
 	ID3D11ShaderResourceView* mShaderResouceView;
 	ID3D11SamplerState* mSamplerState;
 
-	std::unordered_map<ChunkKey, ChunkMesh> mChunkInstanceBuffers;
+	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshs;
 	ComPtr<ID3D11Buffer> mDebugRayVertexBuffer;
 
 	ComPtr<ID3D11Query> mPipelineQuery;
@@ -127,7 +123,7 @@ private:
 	void RenderDebugRay(const Camera& camera);
 
 	void CreateQuery();
-	void LogPipelineState(D3D11_QUERY_DATA_PIPELINE_STATISTICS& stats, size_t drawCallCount);
+	void LogPipelineState(D3D11_QUERY_DATA_PIPELINE_STATISTICS& stats, size_t drawCallCount, const float deltaTIme);
 
 
 private:
@@ -138,6 +134,7 @@ private:
 	BufferPool mIndexBufferPool;
 	queue<PoolClass> mDeferredVertexBufferCreationQueue;
 	queue<PoolClass> mDeferredIndexBufferCreationQueue;
+	
 
 	void CreateBufferPool();
 
@@ -148,6 +145,38 @@ private:
 	void EnqueueIndexBufferCreation(const PoolClass poolClass);
 
 	void ProcessBufferCreationQueue(const uint32_t maxCreateCountPerFrame);
+
+private:
+
+	struct ChunkMeshBuildJob
+	{
+		IVector3 TargetChunkPosition;
+
+		ChunkMeshBuildJob(const IVector3 targetChunkPosition)
+			: TargetChunkPosition(targetChunkPosition)
+		{ }
+
+
+		bool operator==(const ChunkMeshBuildJob& rhs) const noexcept
+		{
+			return TargetChunkPosition == rhs.TargetChunkPosition;
+		}
+
+		struct Hasher
+		{
+			size_t operator()(const ChunkMeshBuildJob& v) const noexcept
+			{
+				return ChunkMath::ToChunkKey(v.TargetChunkPosition);
+			}
+		};
+	};
+
+	queue<ChunkMeshBuildJob> mDirtyChunkMeshQueue;
+	unordered_set<ChunkMeshBuildJob, ChunkMeshBuildJob::Hasher> mDirtyChunkKeys;
+
+	void ScheduleDirtyChunkMesh(const ChunkMeshBuildJob& job);
+	void ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos);
+	bool TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos);
 
 };
 

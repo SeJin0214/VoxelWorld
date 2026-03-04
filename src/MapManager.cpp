@@ -12,7 +12,6 @@ MapManager::MapManager()
 	: mChunkArray(new Chunk[MEMORY_POOL_SIZE])
 	, mLastChunkPosition{ INT32_MIN, INT32_MIN, INT32_MIN }
 {
-	
 	mFreePool.reserve(MEMORY_POOL_SIZE);
 	mUsedChunks.reserve(MEMORY_POOL_SIZE);
 	mChunks.reserve(MEMORY_POOL_SIZE);
@@ -46,17 +45,17 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 
 	int32_t chunkSize = WorldConfig::CHUNK_SIZE;
 
-	const int32_t back = max(-halfZ, mLastChunkPosition.z - loadHalfExtent); // 월드 벗어나는 거 로드 안하도록
-	const int32_t front = min(halfZ - chunkSize, mLastChunkPosition.z + loadHalfExtent);
-	const int32_t left = max(-halfX, mLastChunkPosition.x - loadHalfExtent);
-	const int32_t right = min(halfX - chunkSize, mLastChunkPosition.x + loadHalfExtent);
-	const int32_t bottom = max(-halfY, mLastChunkPosition.y - loadHalfExtent);
-	const int32_t top = min(halfY - chunkSize, mLastChunkPosition.y + loadHalfExtent);
-
+	// 한 번 더 반복되면, Invoke로 호출하도록 추상화
+	int32_t back = max(-halfZ, mLastChunkPosition.z - loadHalfExtent); // 월드 벗어나는 거 로드 안하도록
+	int32_t front = min(halfZ - chunkSize, mLastChunkPosition.z + loadHalfExtent);
 	for (int32_t i = back; i <= front; i += chunkSize)
 	{
+		int32_t left = max(-halfX, mLastChunkPosition.x - loadHalfExtent);
+		int32_t right = min(halfX - chunkSize, mLastChunkPosition.x + loadHalfExtent);
 		for (int32_t j = left; j <= right; j += chunkSize)
 		{
+			int32_t bottom = max(-halfY, mLastChunkPosition.y - loadHalfExtent);
+			int32_t top = min(halfY - chunkSize, mLastChunkPosition.y + loadHalfExtent);
 			for (int32_t k = bottom; k <= top; k += chunkSize)
 			{
 				IVector3 chunkPos(j, k, i);
@@ -72,18 +71,16 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 		}
 	}
 
-	// 삭제 offset을 이용해서 계산하기
-	// 청크 5개라면, 7개 까지는 봐주기
 	for (int32_t i = 0; i < mUsedChunks.size(); ++i)
 	{
 		const ChunkInfo& chunkInfo = mUsedChunks[i];
-		if (StreamingPolicy::ShouldKeep(chunkInfo.position, mLastChunkPosition))
+		if (StreamingPolicy::ShouldKeep(chunkInfo.Position, mLastChunkPosition))
 		{
 			continue;
 		}
-		DespawnChunkAt(chunkInfo.index);
+		DespawnChunkAt(chunkInfo.Index);
 
-		ChunkKey chunkKey = ChunkMath::ToChunkKey(chunkInfo.position);
+		ChunkKey chunkKey = ChunkMath::ToChunkKey(chunkInfo.Position);
 		mChunks.erase(chunkKey);
 
 		std::swap(mUsedChunks[i], mUsedChunks.back()); // 제거할 요소와 마지막 요소를 스왑
@@ -95,10 +92,10 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 	// 현재 청크 포지션을 기준으로 렌더 거리 내의 청크들을 스폰
 }
 
-void MapManager::ClearDirty(const ChunkInfo& chunkInfo)
+void MapManager::ClearDirty(const ChunkKey key)
 {
-	assert(mChunks.find(GetChunkKey(chunkInfo.position)) != mChunks.end());
-	mChunkArray[chunkInfo.index].ClearDirty();
+	assert(mChunks.contains(key));
+	mChunkArray[mChunks[key]].ClearDirty();
 }
 
 bool MapManager::IsMovedChunkPosition(const Camera& camera) const
@@ -131,15 +128,19 @@ void MapManager::RemoveBlockAt(const Vector3 blockPosition)
 	chunk.RemoveBlockAt(blockPosition);
 }
 
-// 16배수 보장함
-
+// 동기화 보장
+const Chunk& MapManager::GetChunk(const ChunkKey key) const
+{
+	assert(mChunks.contains(key));
+	return mChunkArray[mChunks.find(key)->second]; // const라 []가 안 됨
+}
 
 // mUsedChunks와 같이 사용
 const Chunk& MapManager::GetChunk(const ChunkInfo& chunkInfo) const
 {
-	assert(mChunks.find(GetChunkKey(chunkInfo.position)) != mChunks.end());
+	assert(mChunks.find(ChunkMath::ToChunkKey(chunkInfo.Position)) != mChunks.end());
 
-	int32_t index = chunkInfo.index;
+	int32_t index = chunkInfo.Index;
 	return mChunkArray[index];
 }
 

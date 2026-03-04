@@ -1,7 +1,7 @@
 #pragma once
 #include <cassert>
-#include "Types.h"
 #include "WorldConfig.h"
+#include "IVector3.h"
 
 class StreamingPolicy
 {
