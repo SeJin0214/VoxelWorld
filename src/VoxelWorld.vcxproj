@@ -134,6 +134,8 @@
     <ClCompile Include="BufferPool.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="Chunk.cpp" />
+    <ClCompile Include="DeviceFactory.cpp" />
+    <ClCompile Include="GPUResourceService.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MapManager.cpp" />
@@ -141,6 +143,7 @@
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="ScreenManager.cpp" />
     <ClCompile Include="Logger.cpp" />
+    <ClCompile Include="SkyBox.cpp" />
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -150,9 +153,12 @@
     <ClInclude Include="Chunk.h" />
     <ClInclude Include="ChunkMath.h" />
     <ClInclude Include="ChunkInfo.h" />
+    <ClInclude Include="DeviceFactory.h" />
+    <ClInclude Include="GPUResourceService.h" />
     <ClInclude Include="MeshBuilder.h" />
     <ClInclude Include="MeshData.h" />
     <ClInclude Include="ScopedProfiler.h" />
+    <ClInclude Include="SkyBox.h" />
     <ClInclude Include="StreamingPolicy.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="InputManager.h" />
@@ -168,6 +174,12 @@
   </ItemGroup>
   <ItemGroup>
     <FxCompile Include="..\shaders\Shader.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+    </FxCompile>
+    <FxCompile Include="..\shaders\SkyBox.hlsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
     </FxCompile>

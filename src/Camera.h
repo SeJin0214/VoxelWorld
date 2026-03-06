@@ -16,6 +16,7 @@ public:
 	void Update(const InputManager& inputManager, const float deltaTime);
 
 	Vector3 GetPosition() const { return mPosition; }
+	Matrix GetSkyboxViewMatrix() const { return mBasis.Invert(); }
 	Matrix GetViewMatrix() const { return mViewMatrix; }
 	Matrix GetProjectionMatrix() const { return mProjMatrix; }
 	Matrix GetViewProjectionMatrix() const { return mViewProjMatrix; }

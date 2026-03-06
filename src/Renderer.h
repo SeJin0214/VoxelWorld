@@ -5,16 +5,21 @@
 #pragma comment(lib, "d3dcompiler")
 
 #include <d3d11.h>
-#include <d3dcompiler.h>
 #include <wrl/client.h>
+#include <memory>
+
 #include <queue>
 #include <unordered_set>
+
 #include "BlockMeshData.h"
 #include "Camera.h"
 #include "Types.h"
 #include "BufferPool.h"
 #include "ChunkInfo.h"
 #include "ChunkMath.h"
+#include "SkyBox.h"
+#include "GPUResourceService.h"
+#include "DeviceFactory.h"
 
 using std::vector;
 using std::queue;
@@ -24,31 +29,32 @@ using Microsoft::WRL::ComPtr;
 class Renderer
 {
 public:
-	Renderer();
+	Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService);
 	void Present();
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 	void Update(const Camera& camera, const float deltaTime);
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount);
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 
-	void Create(HWND hWnd);
+	void Create();
 	void Release();
 
 	ID3D11Buffer* CreateInstanceBuffer(const UINT byteWidth);
 
 	// 한 번만 세팅
-	void PreparePipeline();
+	void SetupStaticPipelineState();
 
 	// 매프레임 세팅
-	void Prepare();
+	void BeginFrame();
 
+	// 이것도 따로 빼기
 	void UpdateConstantBuffer(const Camera& camera, const Vector3 position);
+
 	void OnDisableChunk(const ChunkKey key);
 
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;
 	~Renderer() = default;
-
 
 private:
 
@@ -60,7 +66,6 @@ private:
 		uint32_t IndexCount;
 		PoolClass PendintVertexState;
 		PoolClass PendintIndexState;
-
 
 		ChunkMesh()
 			: VertexBuffer()
@@ -77,64 +82,48 @@ private:
 	static constexpr uint32_t VERTEX_BYTE = sizeof(BlockVertex);
 	static constexpr uint32_t INDEX_BYTE = sizeof(UINT);
 
-	ID3D11Device* mDevice;
-	ID3D11DeviceContext* mDeviceContext;
-	IDXGISwapChain* mSwapChain;
-
+	ComPtr<ID3D11Device> mDevice;
+	ComPtr<ID3D11DeviceContext> mDeviceContext;
+	ComPtr<IDXGISwapChain> mSwapChain;
 	D3D11_VIEWPORT mViewport;
-	ID3D11Texture2D* mFrameBuffer;
-	ID3D11RenderTargetView* mRenderTargetView;
 
-	ID3D11Texture2D* mDepthBuffer;
-	ID3D11DepthStencilView* mDepthView;
-	ID3D11DepthStencilState* mDepthState;
+	ComPtr<ID3D11Texture2D> mFrameBuffer;
+	ComPtr<ID3D11RenderTargetView> mRenderTargetView;
 
-	ID3D11RasterizerState* mRaterizerState;
+	ComPtr<ID3D11Texture2D> mDepthBuffer;
+	ComPtr<ID3D11DepthStencilView> mDepthView;
+	ComPtr<ID3D11DepthStencilState> mDepthState;
 
-	ID3D11VertexShader* mVertexShader;
-	ID3D11PixelShader* mPixelShader;
-	ID3D11InputLayout* mInputLayout;
+	ComPtr<ID3D11RasterizerState> mRaterizerState;
 
-	ID3D11Buffer* mConstantBuffer;
+	ComPtr<ID3D11VertexShader> mVertexShader;
+	ComPtr<ID3D11PixelShader> mPixelShader;
+	ComPtr<ID3D11InputLayout> mInputLayout;
 
-	ID3D11ShaderResourceView* mShaderResouceView;
-	ID3D11SamplerState* mSamplerState;
+	ComPtr<ID3D11Buffer> mConstantBuffer;
+
+	ComPtr<ID3D11ShaderResourceView> mShaderResouceView;
+	ComPtr<ID3D11SamplerState> mSamplerState;
 
 	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshs;
 	ComPtr<ID3D11Buffer> mDebugRayVertexBuffer;
 
 	ComPtr<ID3D11Query> mPipelineQuery;
 
-	void CreateSwapChainAndDevice(HWND hWnd);
-	void CreateFrameBufferAndRTV();
-	void CreateDepthBufferAndDSV();
-	void CreateDepthStencilState();
-	void CreateRaterizerState();
-	void CreateShaders();
-	void CreateConstantBuffer();
-	void CreateTextureAndSRV();
-	void CreateSamplerState();
+private:
+	GPUResourceService& mGPUResourceService;
+	SkyBox mSkyBox;
 
-	ID3D11Buffer* CreateStaticVertexBuffer(const void* vertexDataPtr, const UINT byteWidth);
-	ID3D11Buffer* CreateDynamicVertexBuffer(const UINT byteWidth);
-	ID3D11Buffer* CreateDynamicIndexBuffer(const UINT byteWidth);
-	void UpdateDynamicBuffer(ID3D11Buffer* buffer, const void* dataPtr, size_t byteWidth);
-	void ReleaseBuffer(ID3D11Buffer* vertexBuffer);
+
 	void RenderDebugRay(const Camera& camera);
-
-	void CreateQuery();
-	void LogPipelineState(D3D11_QUERY_DATA_PIPELINE_STATISTICS& stats, size_t drawCallCount, const float deltaTIme);
 
 
 private:
-
-	// GPU memory pool
-	// 하나의 클래스로 만들까
+	// GPU memory pool, 스케듈러 클래스 하나 생성하여 이동
 	BufferPool mVertexBufferPool;
 	BufferPool mIndexBufferPool;
 	queue<PoolClass> mDeferredVertexBufferCreationQueue;
 	queue<PoolClass> mDeferredIndexBufferCreationQueue;
-	
 
 	void CreateBufferPool();
 
@@ -143,11 +132,11 @@ private:
 
 	void EnqueueVertexBufferCreation(const PoolClass poolClass);
 	void EnqueueIndexBufferCreation(const PoolClass poolClass);
-
 	void ProcessBufferCreationQueue(const uint32_t maxCreateCountPerFrame);
 
 private:
 
+	// Job Schdeuler로 이동
 	struct ChunkMeshBuildJob
 	{
 		IVector3 TargetChunkPosition;
@@ -155,7 +144,6 @@ private:
 		ChunkMeshBuildJob(const IVector3 targetChunkPosition)
 			: TargetChunkPosition(targetChunkPosition)
 		{ }
-
 
 		bool operator==(const ChunkMeshBuildJob& rhs) const noexcept
 		{
@@ -178,7 +166,13 @@ private:
 	void ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos);
 	bool TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos);
 
+
+
 };
+
+
+
+
 
 
 

@@ -1,9 +1,9 @@
-#include <cassert>
+Ôªø#include <cassert>
 #include <wrl/client.h>
 #include "Renderer.h"
 #include "WVPMatrix.h"
 #include "DirectXMath.h"
-#include "WICTextureLoader.h"   // png/jpg/bmp µÓ (WIC)
+#include "WICTextureLoader.h"   // png/jpg/bmp Îì± (WIC)
 #include "ScreenManager.h"
 #include "MapManager.h"
 
@@ -19,49 +19,46 @@
 
 using namespace DirectX;
 
-Renderer::Renderer()
-	: mDevice(nullptr)
-	, mDeviceContext(nullptr)
-	, mSwapChain(nullptr)
-	, mViewport{}
-	, mFrameBuffer(nullptr)
-	, mRenderTargetView(nullptr)
-	, mDepthBuffer(nullptr)
-	, mDepthView(nullptr)
-	, mDepthState(nullptr)
-	, mRaterizerState(nullptr)
-	, mVertexShader(nullptr)
-	, mPixelShader(nullptr)
-	, mInputLayout(nullptr)
-	, mConstantBuffer(nullptr)
-	, mShaderResouceView(nullptr)
-	, mSamplerState(nullptr)
+Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService)
+	: mDevice(deviceBundle.Device)
+	, mDeviceContext(deviceBundle.DeviceContext)
+	, mSwapChain(deviceBundle.SwapChain)
+	, mViewport(deviceBundle.Viewport)
+	, mFrameBuffer(gpuResourceService.CreateFrameBuffer(deviceBundle.SwapChain.Get()))
+	, mRenderTargetView(gpuResourceService.CreateRenderTargetView(mFrameBuffer.Get()))
+	, mDepthBuffer(gpuResourceService.CreateDepthBuffer(ScreenManager::GetInstance().GetClientWidth(), ScreenManager::GetInstance().GetClientHeight()))
+	, mDepthView(gpuResourceService.CreateDepthStencilView(mDepthBuffer.Get()))
+	, mDepthState(gpuResourceService.CreateDepthStencilState())
+	, mRaterizerState(gpuResourceService.CreateRaterizerState())
+	, mVertexShader(gpuResourceService.CreateVertexShader(gpuResourceService.CompileVertexShader(L"shaders/Shader.hlsl").Get()))
+	, mPixelShader(gpuResourceService.CreatePixelShader(gpuResourceService.CompilePixelShader(L"shaders/Shader.hlsl").Get()))
+	, mInputLayout(gpuResourceService.CreateInputLayout(gpuResourceService.CompileVertexShader(L"shaders/Shader.hlsl").Get()))
+	, mConstantBuffer(gpuResourceService.CreateDynamicConstantBuffer(sizeof(WVPMatrix)))
+	, mShaderResouceView(gpuResourceService.CreateTextureAndSRV(L"assets/uv_debug_256.png"))
+	, mSamplerState(gpuResourceService.CreateSamplerState())
+	, mPipelineQuery(gpuResourceService.CreatePipelineStatisticsQuery())
+	, mGPUResourceService(gpuResourceService)
+	, mSkyBox(gpuResourceService)
 {
+	assert(mDevice != nullptr && mDeviceContext != nullptr && mSwapChain != nullptr);
 }
 
 void Renderer::Update(const Camera& camera, const float deltaTime)
 {
-	//Timer timer;
-	//double buildTime = 0.0f;
-	//double createTime = 0.0f;
-	//double updateTime = 0.0f;
-	//double presentTime = 0.0f;
-	//size_t updateCount = 0;
-	//size_t drawCallCount = 0;
+	BeginFrame();
 
 	//mDeviceContext->Begin(mPipelineQuery.Get());
-
 
 	MapManager& mapManager = MapManager::GetInstance();
 	const std::vector<ChunkInfo>& usedChunks = mapManager.GetUsedChunks();
 
-	// GetWorldFrustum¿∏∑Œ ªÃæ∆≥ª¿⁄, ∑ª¥ı∑Øø°º≠ 
+	// GetWorldFrustumÏúºÎ°ú ÎΩëÏïÑÎÇ¥Ïûê, Î†åÎçîÎü¨ÏóêÏÑú 
 	BoundingFrustum frustum;
 	BoundingFrustum::CreateFromMatrix(frustum, camera.GetProjectionMatrix());
 
 	XMMATRIX viewMat = camera.GetViewMatrix();
 	XMVECTOR det;
-	XMMATRIX invView = XMMatrixInverse(&det, viewMat); // ƒ´∏ﬁ∂Ûø°º≠ ªÃæ∆øÕµµ µ»¥Ÿ.
+	XMMATRIX invView = XMMatrixInverse(&det, viewMat); // Ïπ¥Î©îÎùºÏóêÏÑú ÎΩëÏïÑÏôÄÎèÑ ÎêúÎã§.
 
 	BoundingFrustum frustumWorld;
 	frustum.Transform(frustumWorld, invView);
@@ -70,11 +67,11 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 
 	for (uint32_t i = 0; i < usedChunks.size(); ++i)
 	{
-		// usedChunks[i] ∞°¡ˆ∞Ì frustum ƒ√∏µ ∆«¥‹«œ±‚
+		// usedChunks[i] Í∞ÄÏßÄÍ≥† frustum Ïª¨ÎßÅ ÌåêÎã®ÌïòÍ∏∞
 		const Chunk& chunk = mapManager.GetChunk(usedChunks[i]);
 		IVector3 chunkPosition = chunk.GetChunkPosition();
 
-		// «‘ºˆ∑Œ π≠±‚ 
+		// Ìï®ÏàòÎ°ú Î¨∂Í∏∞ 
 		BoundingBox aabb;
 		BoundingBox::CreateFromPoints(aabb,
 			XMVECTOR{ static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z) },
@@ -85,14 +82,14 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 			continue;
 		}
 
-		if (chunk.IsEmpty()) // πŸ∑Œ ∆«¥‹ ∞°¥…
+		if (chunk.IsEmpty()) // Î∞îÎ°ú ÌåêÎã® Í∞ÄÎä•
 		{
 			continue;
 		}
 
 		if (chunk.IsDirty())
 		{
-			// «¡∑ØΩ∫≈“ø° ∫∏¿Ã∞Ì, ∫ÒæÓ¿÷¡ˆ æ ∞Ì, πŸ≤Óæ˙¥Ÿ∏È ª˝º∫«—¥Ÿ.
+			// ÌîÑÎü¨Ïä§ÌÖÄÏóê Î≥¥Ïù¥Í≥†, ÎπÑÏñ¥ÏûàÏßÄ ÏïäÍ≥†, Î∞îÎÄåÏóàÎã§Î©¥ ÏÉùÏÑ±ÌïúÎã§.
 			ScheduleDirtyChunkMesh(ChunkMeshBuildJob(chunkPosition));
 			continue;
 		}
@@ -105,8 +102,10 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 		ChunkMesh& chunkMesh = mChunkMeshs[key];
 		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
 		//++drawCallCount;
-		
 	}
+
+	mSkyBox.BeginFrame(mDeviceContext.Get(), camera);
+	mSkyBox.Draw(mDeviceContext.Get());
 
 	//timer.StartSection();
 	constexpr uint32_t MAX_CREATE_COUNT_PER_FRAME = 20;
@@ -119,6 +118,8 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 
 	//createTime += timer.EndSectionMS();
 	//mVertexBufferPool.printBufferSize();
+	
+	
 	//mDeviceContext->End(mPipelineQuery.Get());
 
 	//D3D11_QUERY_DATA_PIPELINE_STATISTICS stats;
@@ -126,11 +127,10 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 	//{
 	//	Sleep(0);
 	//}
+	
 	//LogPipelineState(stats, drawCallCount, deltaTime);
 
 	//RenderDebugRay(camera);
-	//timer.StartSection();
-	//ScopedProfiler sp("Update", 20.0);
 
 	Present();
 }
@@ -146,14 +146,14 @@ void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UIN
 	const UINT stride[2] = { VERTEX_BYTE, sizeof(Vector3) };
 	const UINT offset[2] = { 0, 0 };
 	ID3D11Buffer* buffers[2] = { vertexBuffer, instanceBuffer };
-	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
-	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
+	mDeviceContext->OMSetRenderTargets(1, mRenderTargetView.GetAddressOf(), mDepthView.Get());
+	mDeviceContext->OMSetDepthStencilState(mDepthState.Get(), 1);
 	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 
 	mDeviceContext->IASetVertexBuffers(0, 2, buffers, stride, offset);
 	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-	// (¿Œµ¶Ω∫ ºˆ, ¿ŒΩ∫≈œΩ∫ ºˆ, Ω√¿€ ¿Œµ¶Ω∫, Ω√¿€ πˆ≈ÿΩ∫, Ω√¿€ ¿ŒΩ∫≈œΩ∫)
+	// (Ïù∏Îç±Ïä§ Ïàò, Ïù∏Ïä§ÌÑ¥Ïä§ Ïàò, ÏãúÏûë Ïù∏Îç±Ïä§, ÏãúÏûë Î≤ÑÌÖçÏä§, ÏãúÏûë Ïù∏Ïä§ÌÑ¥Ïä§)
 	mDeviceContext->DrawIndexedInstanced(indexCount, instanceCount, 0, 0, 0);
 	//mDeviceContext->DrawIndexed(indexCount, 0, 0);
 }
@@ -162,7 +162,6 @@ void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UIN
 {
 	const UINT stride = VERTEX_BYTE;
 	const UINT offset = 0;
-
 
 	mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
 	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
@@ -176,22 +175,21 @@ void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position
 	XMMATRIX wvp = world * viewProj;
 
 	WVPMatrix cb{};
-	XMStoreFloat4x4(&cb.WorldViewProj, XMMatrixTranspose(wvp)); // ¡ﬂø‰
+	XMStoreFloat4x4(&cb.WorldViewProj, XMMatrixTranspose(wvp)); // Ï§ëÏöî
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	mDeviceContext->Map(mConstantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
+	mDeviceContext->Map(mConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 	memcpy(mappedResource.pData, &cb, sizeof(WVPMatrix));
-	mDeviceContext->Unmap(mConstantBuffer, 0);
+	mDeviceContext->Unmap(mConstantBuffer.Get(), 0);
 
 	//mDeviceContext->UpdateSubresource(mConstantBuffer, 0, nullptr, &cb, 0, 0);
 
-	// b0∑Œ πŸ¿Œµ˘ (HLSL register(b0)øÕ ∏¬√Áæﬂ «‘)
-	mDeviceContext->VSSetConstantBuffers(0, 1, &mConstantBuffer);
+
 }
 
 void Renderer::OnDisableChunk(const ChunkKey key)
 {
-	// √ª≈©ø° ∫Ì∑œ¿Ã æ¯¥¬ ∞ÊøÏø£ ƒ≥Ω√∏¶ ∞Æ∞Ì ¿÷¡ˆ æ ¥Ÿ.
+	// Ï≤≠ÌÅ¨Ïóê Î∏îÎ°ùÏù¥ ÏóÜÎäî Í≤ΩÏö∞Ïóî Ï∫êÏãúÎ•º Í∞ñÍ≥† ÏûàÏßÄ ÏïäÎã§.
 	if (mChunkMeshs.contains(key) == false)
 	{
 		return;
@@ -210,389 +208,55 @@ void Renderer::OnDisableChunk(const ChunkKey key)
 	mChunkMeshs.erase(key);
 }
 
-void Renderer::Create(HWND hWnd)
+void Renderer::Create()
 {
-	assert(mDevice == nullptr);
-	CreateSwapChainAndDevice(hWnd);
-	CreateFrameBufferAndRTV();
-	CreateDepthBufferAndDSV();
-	CreateDepthStencilState();
-	CreateRaterizerState();
-	CreateShaders();
-	CreateConstantBuffer();
-	CreateTextureAndSRV();
-	CreateSamplerState();
-
-	//CreateVertexAndIndexBufferFromBlockMesh();
-
-	CreateQuery();
-
+	assert(mDevice != nullptr);
 	CreateBufferPool();
 }
 
-void Renderer::Prepare()
+void Renderer::BeginFrame()
 {
 	const float clearColor[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
 
-	mDeviceContext->ClearRenderTargetView(mRenderTargetView, clearColor);
-	mDeviceContext->ClearDepthStencilView(mDepthView, D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
+	mDeviceContext->ClearRenderTargetView(mRenderTargetView.Get(), clearColor);
+	mDeviceContext->ClearDepthStencilView(mDepthView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
 
-	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
-	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
+	mDeviceContext->OMSetRenderTargets(1, mRenderTargetView.GetAddressOf(), mDepthView.Get());
+	mDeviceContext->OMSetDepthStencilState(mDepthState.Get(), 1);
 	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
+
+	// SkyBox ÎïåÎ¨∏Ïóê BeginFrameÏúºÎ°ú
+	mDeviceContext->RSSetState(mRaterizerState.Get());
+
+	mDeviceContext->IASetInputLayout(mInputLayout.Get());
+
+	mDeviceContext->VSSetShader(mVertexShader.Get(), nullptr, 0);
+	mDeviceContext->PSSetShader(mPixelShader.Get(), nullptr, 0);
+
+	mDeviceContext->PSSetSamplers(0, 1, mSamplerState.GetAddressOf());
+	mDeviceContext->PSSetShaderResources(0, 1, mShaderResouceView.GetAddressOf());
+
+	// b0Î°ú Î∞îÏù∏Îî© (HLSL register(b0)ÏôÄ ÎßûÏ∂∞Ïïº Ìï®)
+	mDeviceContext->VSSetConstantBuffers(0, 1, mConstantBuffer.GetAddressOf());
 }
 
-void Renderer::PreparePipeline()
+void Renderer::SetupStaticPipelineState()
 {
 	mDeviceContext->RSSetViewports(1, &mViewport);
-	mDeviceContext->RSSetState(mRaterizerState);
-
 	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mDeviceContext->IASetInputLayout(mInputLayout);
-
-	mDeviceContext->VSSetShader(mVertexShader, nullptr, 0);
-	mDeviceContext->PSSetShader(mPixelShader, nullptr, 0);
-
-	mDeviceContext->PSSetSamplers(0, 1, &mSamplerState);
-	mDeviceContext->PSSetShaderResources(0, 1, &mShaderResouceView);
-}
-
-
-void Renderer::CreateSwapChainAndDevice(HWND hWnd)
-{
-	D3D_FEATURE_LEVEL featurelevels[] = { D3D_FEATURE_LEVEL_11_0 };
-
-	DXGI_SWAP_CHAIN_DESC swapchaindesc = {};
-	swapchaindesc.BufferDesc.Width = 0; // √¢ ≈©±‚ø° ∏¬∞‘ ¿⁄µø¿∏∑Œ º≥¡§
-	swapchaindesc.BufferDesc.Height = 0; // √¢ ≈©±‚ø° ∏¬∞‘ ¿⁄µø¿∏∑Œ º≥¡§
-	swapchaindesc.BufferDesc.Format = DXGI_FORMAT_B8G8R8A8_UNORM; // ªˆªÛ ∆˜∏À
-	swapchaindesc.SampleDesc.Count = 1; // ∏÷∆º ª˘«√∏µ ∫Ò»∞º∫»≠
-	swapchaindesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT; // ∑ª¥ı ≈∏∞Ÿ¿∏∑Œ ªÁøÎ
-	swapchaindesc.BufferCount = 2; // ¥ı∫Ì πˆ∆€∏µ
-	swapchaindesc.OutputWindow = hWnd; // ∑ª¥ı∏µ«“ √¢ «⁄µÈ
-	swapchaindesc.Windowed = TRUE; // √¢ ∏µÂ
-	swapchaindesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // Ω∫ø“ πÊΩƒ
-
-
-	UINT flag = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-#ifdef _DEBUG
-	flag = D3D11_CREATE_DEVICE_BGRA_SUPPORT | D3D11_CREATE_DEVICE_DEBUG;
-#endif // DEBUG
-
-
-	D3D11CreateDeviceAndSwapChain(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, flag,
-		featurelevels, ARRAYSIZE(featurelevels), D3D11_SDK_VERSION,
-		&swapchaindesc, &mSwapChain, &mDevice, nullptr, &mDeviceContext);
-
-	assert(mSwapChain != nullptr);
-	mSwapChain->GetDesc(&swapchaindesc);
-
-	const UINT width = swapchaindesc.BufferDesc.Width;
-	const UINT height = swapchaindesc.BufferDesc.Height;
-
-	ScreenManager::GetInstance().SetClientSize(width, height);
-
-	mViewport = { 0.0f, 0.0f, static_cast<float>(width), static_cast<float>(height), 0.0f, 1.0f };
-}
-
-void Renderer::CreateFrameBufferAndRTV()
-{
-	mSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&mFrameBuffer);
-
-	D3D11_RENDER_TARGET_VIEW_DESC desc{};
-	desc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE2D;
-	desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-
-	assert(mFrameBuffer != nullptr);
-
-	mDevice->CreateRenderTargetView(mFrameBuffer, &desc, &mRenderTargetView);
-	assert(mRenderTargetView != nullptr);
-}
-
-void Renderer::CreateDepthBufferAndDSV()
-{
-	DXGI_SWAP_CHAIN_DESC swapChainDesc{};
-	mSwapChain->GetDesc(&swapChainDesc);
-
-	D3D11_TEXTURE2D_DESC desc{};
-	desc.Width = swapChainDesc.BufferDesc.Width;
-	desc.Height = swapChainDesc.BufferDesc.Height;
-	desc.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-
-	desc.SampleDesc.Count = 1;  // MSAA æ» æ¥¥Ÿ.
-	desc.SampleDesc.Quality = 0;
-	desc.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-
-	desc.Usage = D3D11_USAGE_DEFAULT;
-	desc.MipLevels = 1;
-	desc.ArraySize = 1;
-	desc.CPUAccessFlags = 0;
-	desc.MiscFlags = 0;
-
-	mDevice->CreateTexture2D(&desc, nullptr, &mDepthBuffer);
-	assert(mDepthBuffer != nullptr);
-
-	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
-	dsvDesc.Format = desc.Format;
-	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D; // MSAA∏È TEXTURE2DMS
-	dsvDesc.Texture2D.MipSlice = 0;
-
-	mDevice->CreateDepthStencilView(mDepthBuffer, &dsvDesc, &mDepthView);
-	assert(mDepthView != nullptr);
-}
-
-void Renderer::CreateDepthStencilState()
-{
-	D3D11_DEPTH_STENCIL_DESC dsDesc = {};
-	dsDesc.DepthEnable = TRUE;                          // ±Ì¿Ã ≈◊Ω∫∆Æ ƒ‘
-	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL; // ±Ì¿Ã ∞™ ±‚∑œ«‘
-	dsDesc.DepthFunc = D3D11_COMPARISON_LESS;           // ¥ı ¿€¿∫(∞°±ÓøÓ) ∞Õ∏∏ «’∞›
-
-	mDevice->CreateDepthStencilState(&dsDesc, &mDepthState);
-	assert(mDepthState != nullptr);
-}
-
-void Renderer::CreateRaterizerState()
-{
-	D3D11_RASTERIZER_DESC desc{};
-	desc.FillMode = D3D11_FILL_SOLID; // √§øÏ±‚ ∏µÂ 
-	desc.CullMode = D3D11_CULL_BACK; // πÈ ∆‰¿ÃΩ∫ ƒ√∏µ
-	desc.FrontCounterClockwise = false;
-	//desc.FillMode = D3D11_FILL_WIREFRAME;
-	//desc.CullMode = D3D11_CULL_NONE; // ƒ√∏µ ≤Ù±‚, µπˆ±Î
-
-	mDevice->CreateRasterizerState(&desc, &mRaterizerState);
-	assert(mRaterizerState != nullptr);
-}
-
-void Renderer::CreateShaders()
-{
-	ID3DBlob* vertexBlob;
-	ID3DBlob* pixelBlob;
-
-	HRESULT hr = D3DCompileFromFile(L"shaders/Shader.hlsl", nullptr, nullptr, "mainVS", "vs_5_0", 0, 0, &vertexBlob, nullptr);
-	SUCCEEDED(hr);
-
-	hr = mDevice->CreateVertexShader(vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), nullptr, &mVertexShader);
-	SUCCEEDED(hr);
-
-	D3DCompileFromFile(L"shaders/Shader.hlsl", nullptr, nullptr, "mainPS", "ps_5_0", 0, 0, &pixelBlob, nullptr);
-
-	mDevice->CreatePixelShader(pixelBlob->GetBufferPointer(), pixelBlob->GetBufferSize(), nullptr, &mPixelShader);
-
-	D3D11_INPUT_ELEMENT_DESC layout[] = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(BlockVertex, position), D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, offsetof(BlockVertex, normal), D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, offsetof(BlockVertex, uv), D3D11_INPUT_PER_VERTEX_DATA, 0 },
-		{ "INSTANCEPOS", 0, DXGI_FORMAT_R32G32B32_FLOAT, 1, 0, D3D11_INPUT_PER_INSTANCE_DATA, 1 }
-	};
-
-	mDevice->CreateInputLayout(layout, ARRAYSIZE(layout), vertexBlob->GetBufferPointer(), vertexBlob->GetBufferSize(), &mInputLayout);
-
-	vertexBlob->Release();
-	pixelBlob->Release();
-}
-
-void Renderer::CreateConstantBuffer()
-{
-	D3D11_BUFFER_DESC desc{};
-	desc.Usage = D3D11_USAGE_DYNAMIC;
-	//desc.Usage = D3D11_USAGE_DEFAULT;
-
-	desc.ByteWidth = sizeof(WVPMatrix);
-	desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	mDevice->CreateBuffer(&desc, nullptr, &mConstantBuffer);
-	assert(mConstantBuffer != nullptr);
 }
 
 ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 {
-	assert(byteWidth != 0);
-	// 3D11_USAGE_DYNAMIC∞˙ DISCARD Ω·æﬂ«—¥Ÿ∞Ì «‘
-
-	D3D11_BUFFER_DESC instanceBufferDesc = {};
-	instanceBufferDesc.ByteWidth = byteWidth;
-	instanceBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-	// vertexBuffer∂˚ ¥Ÿ∏• ¡°
-	instanceBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-	instanceBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-	instanceBufferDesc.StructureByteStride = sizeof(Vector3);
-
-	ID3D11Buffer* instanceBuffer;
-
-	mDevice->CreateBuffer(&instanceBufferDesc, nullptr, &instanceBuffer);
-	assert(instanceBuffer != nullptr);
-	return instanceBuffer;
+	ComPtr<ID3D11Buffer> instanceBuffer = mGPUResourceService.CreateDynamicInstanceBuffer(byteWidth, sizeof(Vector3));
+	return instanceBuffer.Detach();
 }
-
-void Renderer::UpdateDynamicBuffer(ID3D11Buffer* buffer, const void* dataPtr, size_t byteWidth)
-{
-	assert(buffer != nullptr && dataPtr != nullptr);
-	D3D11_MAPPED_SUBRESOURCE mapped;
-	mDeviceContext->Map(buffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mapped);
-
-	memcpy(mapped.pData, dataPtr, byteWidth);
-	mDeviceContext->Unmap(buffer, 0);
-}
-
-ID3D11Buffer* Renderer::CreateStaticVertexBuffer(const void* vertexDataPtr, const UINT byteWidth)
-{
-	assert(byteWidth != 0);
-	D3D11_BUFFER_DESC vertexBufferDesc = {};
-	vertexBufferDesc.ByteWidth = byteWidth;
-	vertexBufferDesc.Usage = D3D11_USAGE_DEFAULT;
-	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-
-	D3D11_SUBRESOURCE_DATA vertexBufferSRD = { vertexDataPtr };
-
-	ID3D11Buffer* vertexBuffer;
-
-	mDevice->CreateBuffer(&vertexBufferDesc, &vertexBufferSRD, &vertexBuffer);
-	assert(vertexBuffer != nullptr);
-	return vertexBuffer;
-}
-
-void Renderer::CreateTextureAndSRV()
-{
-	DirectX::CreateWICTextureFromFile(mDevice, mDeviceContext, L"assets/uv_debug_256.png", nullptr, &mShaderResouceView);
-}
-
-void Renderer::CreateSamplerState()
-{
-	D3D11_SAMPLER_DESC sd{};
-	sd.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT; // ¡° ª˘«√∏µ(µµ∆Æ ¿Ø¡ˆ)
-	sd.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
-	sd.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
-	sd.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
-	sd.ComparisonFunc = D3D11_COMPARISON_NEVER;
-	sd.MinLOD = 0;
-	sd.MaxLOD = D3D11_FLOAT32_MAX;
-
-	mDevice->CreateSamplerState(&sd, &mSamplerState);
-}
-
-void Renderer::ReleaseBuffer(ID3D11Buffer* buffer)
-{
-	buffer->Release();
-}
-
-void Renderer::CreateQuery()
-{
-
-	// 2. ƒı∏Æ ∞¥√º ª˝º∫ (√ ±‚»≠ Ω√ 1»∏ Ω««‡)
-	D3D11_QUERY_DESC queryDesc;
-	queryDesc.Query = D3D11_QUERY_PIPELINE_STATISTICS;
-	queryDesc.MiscFlags = 0;
-
-	mDevice->CreateQuery(&queryDesc, mPipelineQuery.GetAddressOf());
-}
-
-void Renderer::LogPipelineState(D3D11_QUERY_DATA_PIPELINE_STATISTICS& stats, size_t drawCallCount, const float deltaTIme)
-{
-	static float totalTime = 0.0f;
-	totalTime += deltaTIme;
-	if (totalTime < 1.f) // 1√ ∏∂¥Ÿ ∑Œ±◊ √‚∑¬
-	{
-		return;
-	}
-	totalTime = 0.f;
-
-	printf("\n========== [GPU Pipeline Statistics] ==========\n");
-	// ¿‘∑¬ ¥‹∞Ë
-	printf("Input Assembler Vertices:    %llu\n", stats.IAVertices);
-	printf("Input Assembler Primitives:  %llu\n", stats.IAPrimitives);
-
-	// Ω¶¿Ã¥ı Ω««‡ ¥‹∞Ë
-	printf("Vertex Shader Invocations:   %llu\n", stats.VSInvocations);
-	printf("Pixel Shader Invocations:    %llu\n", stats.PSInvocations);
-
-	printf("Draw Call:                   %llu\n", drawCallCount);
-	printf("===============================================\n");
-
-	static UINT64 maxVertices = 0;
-	static UINT64 maxPrimitives = 0;
-	static UINT64 maxVSInvocations = 0;
-	static UINT64 maxPSInvocations = 0;
-	static size_t maxDrawCallCount = 0;
-
-	maxVertices = max(maxVertices, stats.IAVertices);
-	maxPrimitives = max(maxPrimitives, stats.IAPrimitives);
-	maxVSInvocations = max(maxVSInvocations, stats.VSInvocations);
-	maxPSInvocations = max(maxPSInvocations, stats.PSInvocations);
-	maxDrawCallCount = max(maxDrawCallCount, drawCallCount);
-
-	static UINT64 minVertices = INT_MAX;
-	static UINT64 minPrimitives = INT_MAX;
-	static UINT64 minVSInvocations = INT_MAX;
-	static UINT64 minPSInvocations = INT_MAX;
-	static size_t minDrawCallCount = INT_MAX;
-
-	minVertices = min(minVertices, stats.IAVertices);
-	minPrimitives = min(minPrimitives, stats.IAPrimitives);
-	minVSInvocations = min(minVSInvocations, stats.VSInvocations);
-	minPSInvocations = min(minPSInvocations, stats.PSInvocations);
-	minDrawCallCount = min(minDrawCallCount, drawCallCount);
-
-	printf("\n========== [GPU Pipeline MIN Max Statistics] ==========\n");
-	printf("max Vertices:               %llu\n", maxVertices);
-	printf("min Vertices:               %llu\n", minVertices);
-
-	printf("max Primitives:             %llu\n", maxPrimitives);
-	printf("min Primitives:             %llu\n", minPrimitives);
-
-	printf("max VS Invocations:         %llu\n", maxVSInvocations);
-	printf("min VS Invocations:         %llu\n", minVSInvocations);
-	printf("max PS Invocations:         %llu\n", maxPSInvocations);
-	printf("min PS Invocations:         %llu\n", minPSInvocations);
-
-	printf("max Draw Call:              %llu\n", maxDrawCallCount);
-	printf("min Draw Call:              %llu\n", minDrawCallCount);
-	printf("===============================================\n");
-}
-
-// ¿œπ›»≠ ∞°¥…
-ID3D11Buffer* Renderer::CreateDynamicVertexBuffer(const UINT byteWidth)
-{
-	D3D11_BUFFER_DESC desc{};
-	desc.Usage = D3D11_USAGE_DYNAMIC;
-
-	desc.ByteWidth = byteWidth;
-	desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-	ID3D11Buffer* vertexBuffer = nullptr;
-	mDevice->CreateBuffer(&desc, nullptr, &vertexBuffer);
-	assert(vertexBuffer != nullptr);
-
-	return vertexBuffer;
-}
-
-ID3D11Buffer* Renderer::CreateDynamicIndexBuffer(const UINT byteWidth)
-{
-	D3D11_BUFFER_DESC desc{};
-	desc.Usage = D3D11_USAGE_DYNAMIC;
-
-	desc.ByteWidth = byteWidth;
-	desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-
-	ID3D11Buffer* indexBuffer = nullptr;
-	mDevice->CreateBuffer(&desc, nullptr, &indexBuffer);
-	assert(indexBuffer != nullptr);
-
-	return indexBuffer;
-}
-
-
-
 
 void Renderer::RenderDebugRay(const Camera& camera)
 {
 	if (mDebugRayVertexBuffer.Get() == nullptr)
 	{
-		mDebugRayVertexBuffer.Attach(CreateDynamicVertexBuffer(VERTEX_BYTE * 2));
+		mDebugRayVertexBuffer = mGPUResourceService.CreateDynamicVertexBuffer(VERTEX_BYTE * 2);
 	}
 
 	Vector3 origin = camera.GetPosition();
@@ -611,15 +275,15 @@ void Renderer::RenderDebugRay(const Camera& camera)
 		{ end, Vector3::Zero, Vector2(-1.0f, 0.0f) },
 	};
 
-	UpdateDynamicBuffer(mDebugRayVertexBuffer.Get(), rayVerts, sizeof(rayVerts));
+	mGPUResourceService.UpdateDynamicBuffer(mDebugRayVertexBuffer.Get(), rayVerts, sizeof(rayVerts));
 	UpdateConstantBuffer(camera, Vector3::Zero);
 
 	const UINT stride = VERTEX_BYTE;
 	const UINT offset = 0;
 	ID3D11Buffer* vb = mDebugRayVertexBuffer.Get();
 
-	mDeviceContext->OMSetRenderTargets(1, &mRenderTargetView, mDepthView);
-	mDeviceContext->OMSetDepthStencilState(mDepthState, 1);
+	mDeviceContext->OMSetRenderTargets(1, mRenderTargetView.GetAddressOf(), mDepthView.Get());
+	mDeviceContext->OMSetDepthStencilState(mDepthState.Get(), 1);
 	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 	mDeviceContext->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
 	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
@@ -634,51 +298,23 @@ void Renderer::Release()
 	mDeviceContext->ClearState();
 	mDeviceContext->Flush();
 
-
-	mSamplerState->Release();
-	mSamplerState = nullptr;
-
-	mShaderResouceView->Release();
-	mShaderResouceView = nullptr;
-
-	mConstantBuffer->Release();
-	mConstantBuffer = nullptr;
-
-	mInputLayout->Release();
-	mInputLayout = nullptr;
-
-	mPixelShader->Release();
-	mPixelShader = nullptr;
-
-	mVertexShader->Release();
-	mVertexShader = nullptr;
-
-	mRaterizerState->Release();
-	mRaterizerState = nullptr;
-
-	mDepthState->Release();
-	mDepthState = nullptr;
-
-	mDepthView->Release();
-	mDepthView = nullptr;
-
-	mDepthBuffer->Release();
-	mDepthBuffer = nullptr;
-
-	mRenderTargetView->Release();
-	mRenderTargetView = nullptr;
-
-	mFrameBuffer->Release();
-	mFrameBuffer = nullptr;
-
-	mSwapChain->Release();
-	mSwapChain = nullptr;
-
-	mDeviceContext->Release();
-	mDeviceContext = nullptr;
-
-	mDevice->Release();
-	mDevice = nullptr;
+	mDebugRayVertexBuffer.Reset();
+	
+	mSamplerState.Reset();
+	mShaderResouceView.Reset();
+	mConstantBuffer.Reset();
+	mInputLayout.Reset();
+	mPixelShader.Reset();
+	mVertexShader.Reset();
+	mRaterizerState.Reset();
+	mDepthState.Reset();
+	mDepthView.Reset();
+	mDepthBuffer.Reset();
+	mRenderTargetView.Reset();
+	mFrameBuffer.Reset();
+	mSwapChain.Reset();
+	mDeviceContext.Reset();
+	mDevice.Reset();
 }
 
 void Renderer::CreateBufferPool()
@@ -699,11 +335,11 @@ void Renderer::CreateBufferPool()
 void Renderer::AllocateMoreAtVertexPool(const PoolClass poolClass)
 {
 	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
-	ID3D11Buffer* vertexBuffer = CreateDynamicVertexBuffer(BufferPool::GetByte(poolClass));
+	ComPtr<ID3D11Buffer> vertexBuffer = mGPUResourceService.CreateDynamicVertexBuffer(BufferPool::GetByte(poolClass));
 
 	PooledBuffer vb;
 	vb.Class = poolClass;
-	vb.Buffer.Attach(vertexBuffer);
+	vb.Buffer = std::move(vertexBuffer);
 	mVertexBufferPool.DespawnBuffer(vb);
 }
 
@@ -712,11 +348,11 @@ void Renderer::AllocateMoreAtIndexPool(const PoolClass poolClass)
 	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
 
 	const SizeClass* sizeClasses = BufferPool::GetBufferSizeClasses();
-	ID3D11Buffer* indexBuffer = CreateDynamicIndexBuffer(BufferPool::GetByte(poolClass));
+	ComPtr<ID3D11Buffer> indexBuffer = mGPUResourceService.CreateDynamicIndexBuffer(BufferPool::GetByte(poolClass));
 
 	PooledBuffer ib;
 	ib.Class = poolClass;
-	ib.Buffer.Attach(indexBuffer);
+	ib.Buffer = std::move(indexBuffer);
 	mIndexBufferPool.DespawnBuffer(ib);
 }
 
@@ -757,7 +393,6 @@ void Renderer::EnqueueIndexBufferCreation(const PoolClass poolClass)
 	mDeferredIndexBufferCreationQueue.push(poolClass);
 }
 
-
 void Renderer::ScheduleDirtyChunkMesh(const ChunkMeshBuildJob& job)
 {
 	if (mDirtyChunkKeys.contains(job))
@@ -785,7 +420,7 @@ void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVecto
 	}
 }
 
-// ∫Òµø±‚ µø¿€ 
+// ÎπÑÎèôÍ∏∞ ÎèôÏûë 
 bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos)
 {
 	mDirtyChunkKeys.erase(job);
@@ -869,9 +504,20 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 
 	assert(chunkMesh.VertexBuffer.Buffer != nullptr && chunkMesh.IndexBuffer.Buffer != nullptr);
 
-	UpdateDynamicBuffer(chunkMesh.VertexBuffer.Buffer.Get(), newMeshData.Vertices.data(), static_cast<size_t>(chunkMesh.VertexCount) * VERTEX_BYTE);
-	UpdateDynamicBuffer(chunkMesh.IndexBuffer.Buffer.Get(), newMeshData.Indices.data(), static_cast<size_t>(chunkMesh.IndexCount) * INDEX_BYTE);
+	mGPUResourceService.UpdateDynamicBuffer(chunkMesh.VertexBuffer.Buffer.Get(), newMeshData.Vertices.data(), static_cast<size_t>(chunkMesh.VertexCount) * VERTEX_BYTE);
+	mGPUResourceService.UpdateDynamicBuffer(chunkMesh.IndexBuffer.Buffer.Get(), newMeshData.Indices.data(), static_cast<size_t>(chunkMesh.IndexCount) * INDEX_BYTE);
 
 	mapManager.ClearDirty(key);
 	return true;
 }
+
+
+
+
+
+
+
+
+
+
+

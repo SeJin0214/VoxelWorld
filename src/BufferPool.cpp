@@ -32,6 +32,7 @@ void BufferPool::DespawnBuffer(PooledBuffer& buffer)
 {
 	mBufferPool[static_cast<uint32_t>(buffer.Class)].push_back(std::move(buffer.Buffer));
 	buffer.Class = PoolClass::None;
+	assert(buffer.Buffer == nullptr);
 }
 
 uint32_t BufferPool::GetByte(PoolClass poolClass)

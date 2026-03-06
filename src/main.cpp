@@ -51,6 +51,9 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
+
+	// Engine.cpp
+
 	WCHAR windowClass[] = L"Voxel World";
 	WCHAR title[] = L"Voxel World";
 
@@ -60,16 +63,18 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	ScreenManager::GetInstance().CreateHWND(windowClass, title, hInstance);
 	HWND hWnd = ScreenManager::GetInstance().GetHWND();
 
-	Renderer renderer;
-	renderer.Create(hWnd);
-	renderer.PreparePipeline();
+	DeviceFactory::DeviceBundle deviceBundle = DeviceFactory::CreateDeviceAndSwapChain(hWnd);
+	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
+	Renderer renderer(deviceBundle, gpuResourceService);
+	renderer.Create();
+	renderer.SetupStaticPipelineState();
 
 	InputManager inputManager;
+
 	Camera camera(Vector3(5, 0, -50), Vector3());
 
 	Timer timer;
 	timer.Reset();
-
 
 	static uint32_t frameNumber = 0;
 	timer.InitFPSStats();
@@ -106,8 +111,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 			}
 		}
 
-		renderer.Prepare();
-
 		if (inputManager.Update() == false)
 		{
 			break;
@@ -133,4 +136,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	return 0;
 }
+
+
+
+
 
