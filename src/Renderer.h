@@ -1,9 +1,5 @@
 #pragma once
 
-#pragma comment(lib, "user32")
-#pragma comment(lib, "d3d11")
-#pragma comment(lib, "d3dcompiler")
-
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <memory>
@@ -20,19 +16,22 @@
 #include "SkyBox.h"
 #include "GPUResourceService.h"
 #include "DeviceFactory.h"
+#include "TextureManager.h"
 
 using std::vector;
 using std::queue;
 using std::unordered_set;
 using Microsoft::WRL::ComPtr;
 
+class MapManager;
+
 class Renderer
 {
 public:
-	Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService);
+	Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager);
 	void Present();
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
-	void Update(const Camera& camera, const float deltaTime);
+	void Update(const Camera& camera, const float deltaTime, MapManager& mapManager);
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount);
 	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 
@@ -102,7 +101,6 @@ private:
 
 	ComPtr<ID3D11Buffer> mConstantBuffer;
 
-	ComPtr<ID3D11ShaderResourceView> mShaderResouceView;
 	ComPtr<ID3D11SamplerState> mSamplerState;
 
 	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshs;
@@ -112,6 +110,7 @@ private:
 
 private:
 	GPUResourceService& mGPUResourceService;
+	TextureManager& mTextureManager;
 	SkyBox mSkyBox;
 
 
@@ -163,12 +162,15 @@ private:
 	unordered_set<ChunkMeshBuildJob, ChunkMeshBuildJob::Hasher> mDirtyChunkKeys;
 
 	void ScheduleDirtyChunkMesh(const ChunkMeshBuildJob& job);
-	void ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos);
-	bool TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos);
+	void ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos, MapManager& mapManager);
+	bool TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos, MapManager& mapManager);
 
 
 
 };
+
+
+
 
 
 

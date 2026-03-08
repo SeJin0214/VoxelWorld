@@ -18,6 +18,7 @@
 #include "Timer.h"
 #include "MapManager.h"
 #include "ScopedProfiler.h"
+#include "TextureManager.h"
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -65,7 +66,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	DeviceFactory::DeviceBundle deviceBundle = DeviceFactory::CreateDeviceAndSwapChain(hWnd);
 	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
-	Renderer renderer(deviceBundle, gpuResourceService);
+	TextureManager textureManager(gpuResourceService);
+	
+	MapManager mapManager;
+	Renderer renderer(deviceBundle, gpuResourceService, textureManager);
 	renderer.Create();
 	renderer.SetupStaticPipelineState();
 
@@ -117,14 +121,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		}
 
 		float deltaTime = timer.GetDeltaTime();
-		camera.Update(inputManager, deltaTime);
+		camera.Update(inputManager, deltaTime, mapManager);
 
 		// 나중에 경계를 제대로 잡아야 할 거 같다.
 		
-		MapManager& mapManager = MapManager::GetInstance();
 		mapManager.Update(camera, renderer);
 
-		renderer.Update(camera, deltaTime);
+		renderer.Update(camera, deltaTime, mapManager);
 		//timer.RenderFPSLog();
 	}
 
@@ -136,6 +139,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	return 0;
 }
+
+
+
+
 
 
 

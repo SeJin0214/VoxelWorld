@@ -48,13 +48,15 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 					continue;
 				}
 
+				BlockType type = chunk.GetBlockType(x, y, z);
+
 				for (uint32_t i = 0; i < size; ++i)
 				{
 					if (chunk.IsAir(x + dxdydz[i].x, y + dxdydz[i].y, z + dxdydz[i].z) == false)
 					{
 						continue;
 					}
-					BlockMeshData::AddFace(mMeshData.Vertices, mMeshData.Indices, static_cast<Direction>(i), IVector3(x, y, z), chunkWorldPosition);
+					BlockMeshData::AddFace(mMeshData.Vertices, mMeshData.Indices, static_cast<Direction>(i), IVector3(x, y, z), chunkWorldPosition, type);
 				}
 			}
 		}

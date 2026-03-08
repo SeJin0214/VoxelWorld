@@ -1,0 +1,38 @@
+{
+  "meta": { "atlas_w": 64, "atlas_h": 64 },
+  "tile_size": 16
+  "blocks": {
+    "DIRT": { 
+      "x": 0,  
+      "y": 0 
+    },
+    "GRASS_TOP": { 
+      "x": 16, 
+      "y": 0 
+    },
+    "SEND_TOP": {
+      "x": 32,
+      "y": 0
+    },
+    "SNOW_TOP": {
+      "x": 48,
+      "y": 0
+    },
+    "GRASS_DIRT_SIDE": {
+      "x": 0,  
+      "y": 16
+    },
+    "STONE": {
+      "x": 16,
+      "y": 16
+    },
+    "SEND_DIRT_SIDE": {
+      "x": 0,
+      "y": 32
+    },
+    "SNOW_DIRT_SIDE": {
+      "x": 0,
+      "y": 48
+    }
+  }
+}

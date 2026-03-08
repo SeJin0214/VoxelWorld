@@ -1,11 +1,12 @@
-ï»¿#include <cassert>
+#include <cassert>
 #include <wrl/client.h>
 #include "Renderer.h"
 #include "WVPMatrix.h"
 #include "DirectXMath.h"
-#include "WICTextureLoader.h"   // png/jpg/bmp ë“± (WIC)
+#include "WICTextureLoader.h"   // png/jpg/bmp µî (WIC)
 #include "ScreenManager.h"
 #include "MapManager.h"
+#include "TextureManager.h"
 
 #include <iostream>
 #include <cmath>
@@ -19,7 +20,7 @@
 
 using namespace DirectX;
 
-Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService)
+Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager)
 	: mDevice(deviceBundle.Device)
 	, mDeviceContext(deviceBundle.DeviceContext)
 	, mSwapChain(deviceBundle.SwapChain)
@@ -34,31 +35,30 @@ Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceS
 	, mPixelShader(gpuResourceService.CreatePixelShader(gpuResourceService.CompilePixelShader(L"shaders/Shader.hlsl").Get()))
 	, mInputLayout(gpuResourceService.CreateInputLayout(gpuResourceService.CompileVertexShader(L"shaders/Shader.hlsl").Get()))
 	, mConstantBuffer(gpuResourceService.CreateDynamicConstantBuffer(sizeof(WVPMatrix)))
-	, mShaderResouceView(gpuResourceService.CreateTextureAndSRV(L"assets/uv_debug_256.png"))
 	, mSamplerState(gpuResourceService.CreateSamplerState())
 	, mPipelineQuery(gpuResourceService.CreatePipelineStatisticsQuery())
 	, mGPUResourceService(gpuResourceService)
-	, mSkyBox(gpuResourceService)
+	, mTextureManager(textureManager)
+	, mSkyBox(gpuResourceService, textureManager)
 {
 	assert(mDevice != nullptr && mDeviceContext != nullptr && mSwapChain != nullptr);
 }
 
-void Renderer::Update(const Camera& camera, const float deltaTime)
+void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& mapManager)
 {
 	BeginFrame();
 
 	//mDeviceContext->Begin(mPipelineQuery.Get());
 
-	MapManager& mapManager = MapManager::GetInstance();
 	const std::vector<ChunkInfo>& usedChunks = mapManager.GetUsedChunks();
 
-	// GetWorldFrustumìœ¼ë¡œ ë½‘ì•„ë‚´ì, ë Œë”ëŸ¬ì—ì„œ 
+	// GetWorldFrustumÀ¸·Î »Ì¾Æ³»ÀÚ, ·»´õ·¯¿¡¼­ 
 	BoundingFrustum frustum;
 	BoundingFrustum::CreateFromMatrix(frustum, camera.GetProjectionMatrix());
 
 	XMMATRIX viewMat = camera.GetViewMatrix();
 	XMVECTOR det;
-	XMMATRIX invView = XMMatrixInverse(&det, viewMat); // ì¹´ë©”ë¼ì—ì„œ ë½‘ì•„ì™€ë„ ëœë‹¤.
+	XMMATRIX invView = XMMatrixInverse(&det, viewMat); // Ä«¸Ş¶ó¿¡¼­ »Ì¾Æ¿Íµµ µÈ´Ù.
 
 	BoundingFrustum frustumWorld;
 	frustum.Transform(frustumWorld, invView);
@@ -67,11 +67,11 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 
 	for (uint32_t i = 0; i < usedChunks.size(); ++i)
 	{
-		// usedChunks[i] ê°€ì§€ê³  frustum ì»¬ë§ íŒë‹¨í•˜ê¸°
+		// usedChunks[i] °¡Áö°í frustum ÄÃ¸µ ÆÇ´ÜÇÏ±â
 		const Chunk& chunk = mapManager.GetChunk(usedChunks[i]);
 		IVector3 chunkPosition = chunk.GetChunkPosition();
 
-		// í•¨ìˆ˜ë¡œ ë¬¶ê¸° 
+		// ÇÔ¼ö·Î ¹­±â 
 		BoundingBox aabb;
 		BoundingBox::CreateFromPoints(aabb,
 			XMVECTOR{ static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z) },
@@ -82,14 +82,14 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 			continue;
 		}
 
-		if (chunk.IsEmpty()) // ë°”ë¡œ íŒë‹¨ ê°€ëŠ¥
+		if (chunk.IsEmpty()) // ¹Ù·Î ÆÇ´Ü °¡´É
 		{
 			continue;
 		}
 
 		if (chunk.IsDirty())
 		{
-			// í”„ëŸ¬ìŠ¤í…€ì— ë³´ì´ê³ , ë¹„ì–´ìˆì§€ ì•Šê³ , ë°”ë€Œì—ˆë‹¤ë©´ ìƒì„±í•œë‹¤.
+			// ÇÁ·¯½ºÅÒ¿¡ º¸ÀÌ°í, ºñ¾îÀÖÁö ¾Ê°í, ¹Ù²î¾ú´Ù¸é »ı¼ºÇÑ´Ù.
 			ScheduleDirtyChunkMesh(ChunkMeshBuildJob(chunkPosition));
 			continue;
 		}
@@ -114,7 +114,7 @@ void Renderer::Update(const Camera& camera, const float deltaTime)
 	IVector3 cameraChunkPos = ChunkMath::ToChunkPos(camera.GetPosition());
 
 	constexpr uint32_t MESH_MAX_CREATE_COUNT_PER_FRAME = 4;
-	ProcessMeshCreation(MESH_MAX_CREATE_COUNT_PER_FRAME, cameraChunkPos);
+	ProcessMeshCreation(MESH_MAX_CREATE_COUNT_PER_FRAME, cameraChunkPos, mapManager);
 
 	//createTime += timer.EndSectionMS();
 	//mVertexBufferPool.printBufferSize();
@@ -153,7 +153,7 @@ void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UIN
 	mDeviceContext->IASetVertexBuffers(0, 2, buffers, stride, offset);
 	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
 
-	// (ì¸ë±ìŠ¤ ìˆ˜, ì¸ìŠ¤í„´ìŠ¤ ìˆ˜, ì‹œì‘ ì¸ë±ìŠ¤, ì‹œì‘ ë²„í…ìŠ¤, ì‹œì‘ ì¸ìŠ¤í„´ìŠ¤)
+	// (ÀÎµ¦½º ¼ö, ÀÎ½ºÅÏ½º ¼ö, ½ÃÀÛ ÀÎµ¦½º, ½ÃÀÛ ¹öÅØ½º, ½ÃÀÛ ÀÎ½ºÅÏ½º)
 	mDeviceContext->DrawIndexedInstanced(indexCount, instanceCount, 0, 0, 0);
 	//mDeviceContext->DrawIndexed(indexCount, 0, 0);
 }
@@ -175,7 +175,7 @@ void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position
 	XMMATRIX wvp = world * viewProj;
 
 	WVPMatrix cb{};
-	XMStoreFloat4x4(&cb.WorldViewProj, XMMatrixTranspose(wvp)); // ì¤‘ìš”
+	XMStoreFloat4x4(&cb.WorldViewProj, XMMatrixTranspose(wvp)); // Áß¿ä
 
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	mDeviceContext->Map(mConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
@@ -189,7 +189,7 @@ void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position
 
 void Renderer::OnDisableChunk(const ChunkKey key)
 {
-	// ì²­í¬ì— ë¸”ë¡ì´ ì—†ëŠ” ê²½ìš°ì—” ìºì‹œë¥¼ ê°–ê³  ìˆì§€ ì•Šë‹¤.
+	// Ã»Å©¿¡ ºí·ÏÀÌ ¾ø´Â °æ¿ì¿£ Ä³½Ã¸¦ °®°í ÀÖÁö ¾Ê´Ù.
 	if (mChunkMeshs.contains(key) == false)
 	{
 		return;
@@ -225,7 +225,7 @@ void Renderer::BeginFrame()
 	mDeviceContext->OMSetDepthStencilState(mDepthState.Get(), 1);
 	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
 
-	// SkyBox ë•Œë¬¸ì— BeginFrameìœ¼ë¡œ
+	// SkyBox ¶§¹®¿¡ BeginFrameÀ¸·Î
 	mDeviceContext->RSSetState(mRaterizerState.Get());
 
 	mDeviceContext->IASetInputLayout(mInputLayout.Get());
@@ -234,9 +234,10 @@ void Renderer::BeginFrame()
 	mDeviceContext->PSSetShader(mPixelShader.Get(), nullptr, 0);
 
 	mDeviceContext->PSSetSamplers(0, 1, mSamplerState.GetAddressOf());
-	mDeviceContext->PSSetShaderResources(0, 1, mShaderResouceView.GetAddressOf());
 
-	// b0ë¡œ ë°”ì¸ë”© (HLSL register(b0)ì™€ ë§ì¶°ì•¼ í•¨)
+	mDeviceContext->PSSetShaderResources(0, 1, mTextureManager.GetBlockAtlasSRV().GetAddressOf());
+
+	// b0·Î ¹ÙÀÎµù (HLSL register(b0)¿Í ¸ÂÃç¾ß ÇÔ)
 	mDeviceContext->VSSetConstantBuffers(0, 1, mConstantBuffer.GetAddressOf());
 }
 
@@ -297,24 +298,6 @@ void Renderer::Release()
 
 	mDeviceContext->ClearState();
 	mDeviceContext->Flush();
-
-	mDebugRayVertexBuffer.Reset();
-	
-	mSamplerState.Reset();
-	mShaderResouceView.Reset();
-	mConstantBuffer.Reset();
-	mInputLayout.Reset();
-	mPixelShader.Reset();
-	mVertexShader.Reset();
-	mRaterizerState.Reset();
-	mDepthState.Reset();
-	mDepthView.Reset();
-	mDepthBuffer.Reset();
-	mRenderTargetView.Reset();
-	mFrameBuffer.Reset();
-	mSwapChain.Reset();
-	mDeviceContext.Reset();
-	mDevice.Reset();
 }
 
 void Renderer::CreateBufferPool()
@@ -403,7 +386,7 @@ void Renderer::ScheduleDirtyChunkMesh(const ChunkMeshBuildJob& job)
 	mDirtyChunkKeys.insert(job);
 }
 
-void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos)
+void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos, MapManager& mapManager)
 {
 	uint32_t i = 0;
 	uint32_t j = 0;
@@ -412,7 +395,7 @@ void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVecto
 	{
 		ChunkMeshBuildJob& job = mDirtyChunkMeshQueue.front();
 		mDirtyChunkMeshQueue.pop();
-		if (TryCreateMesh(job, cameraChunkPos))
+		if (TryCreateMesh(job, cameraChunkPos, mapManager))
 		{
 			++i;
 		}
@@ -420,14 +403,12 @@ void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVecto
 	}
 }
 
-// ë¹„ë™ê¸° ë™ì‘ 
-bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos)
+// ºñµ¿±â µ¿ÀÛ 
+bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos, MapManager& mapManager)
 {
 	mDirtyChunkKeys.erase(job);
 
 	ChunkKey key = ChunkMath::ToChunkKey(job.TargetChunkPosition);
-	MapManager& mapManager = MapManager::GetInstance();
-
 	if (StreamingPolicy::ShouldKeep(job.TargetChunkPosition, cameraChunkPos) == false || mapManager.HasChunk(key) == false)
 	{
 		return false;
@@ -510,6 +491,9 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 	mapManager.ClearDirty(key);
 	return true;
 }
+
+
+
 
 
 

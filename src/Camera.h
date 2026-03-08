@@ -5,6 +5,7 @@
 using namespace DirectX::SimpleMath;
 
 class InputManager;
+class MapManager;
 
 class Camera
 {
@@ -13,7 +14,7 @@ public:
 	Camera(const Vector3 position, const Vector3 rotation);
 	~Camera() = default;
 
-	void Update(const InputManager& inputManager, const float deltaTime);
+	void Update(const InputManager& inputManager, const float deltaTime, MapManager& mapManager);
 
 	Vector3 GetPosition() const { return mPosition; }
 	Matrix GetSkyboxViewMatrix() const { return mBasis.Invert(); }
@@ -40,7 +41,10 @@ private:
 	// IsChangedRenderDistance()
 	// 나중에 설정 창에서 조절 가능하게
 
-	void TryRemoveBlock() const;
+	void TryRemoveBlock(MapManager& mapManager) const;
 	void CreatePjoectionMatrix();
 	void CreateViewMatrix(const Vector3 position, const Vector3 mouseMovement, const float deltaTime);
 };
+
+
+

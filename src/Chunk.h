@@ -1,14 +1,13 @@
 #pragma once
-#include <unordered_map>
 #include <cstdint>
 #include "IVector3.h"
 #include "WorldConfig.h"
+#include "BlockType.h"
 
 using namespace DirectX::SimpleMath;
 
 class Chunk
 {
-
 public:
 	Chunk() = default;
 	~Chunk() = default;
@@ -24,16 +23,15 @@ public:
 	bool IsBlockAt(const Vector3 blockPosition) const;
 	void RemoveBlockAt(const Vector3 blockPosition);
 	bool IsAir(const int32_t localX, const int32_t localY, const int32_t localZ) const;
+	BlockType GetBlockType(const int32_t localX, const int32_t localY, const int32_t localZ) const;
 
 private:
 	static constexpr int32_t CHUNK_SIZE = WorldConfig::CHUNK_SIZE;
-	
-	IVector3 mChunkPosition; // 청크 월드 좌표
-	bool mGrid[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE]; // z x y  -> y가 마지막에 있어야 빛 투과 계산에 유리하다고 함
+
+	IVector3 mChunkPosition;
+	BlockType mGrid[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE]; // z, x, y
 	bool mbIsDirty;
 	uint32_t mActiveBlockCount;
 
-	int32_t GetChunkSeed2D() const;
 	void DecreaseActiveBlockCount();
-
 };

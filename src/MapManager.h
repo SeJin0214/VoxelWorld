@@ -14,7 +14,8 @@ class Renderer;
 class MapManager
 {
 public:
-	static MapManager& GetInstance() { return instance; }
+	MapManager();
+	~MapManager();
 
 	MeshBuilder& GetMeshBuilder() { return mMeshBuilder; }
 	const std::vector<ChunkInfo>& GetUsedChunks() const { return mUsedChunks; }
@@ -30,7 +31,6 @@ public:
 
 private:
 
-	static MapManager instance;
 
 	enum 
 	{
@@ -50,8 +50,6 @@ private:
 	Chunk* mChunkArray;
 	IVector3 mLastChunkPosition;
 
-	MapManager();
-	~MapManager();
 	MapManager(const MapManager& other) = delete;
 	MapManager& operator=(const MapManager& rhs) = delete;
 
@@ -61,3 +59,5 @@ private:
 	void DespawnChunkAt(const int32_t index);
 	
 };
+
+

@@ -6,7 +6,6 @@
 #include "ChunkMath.h"
 #include "StreamingPolicy.h"
 
-MapManager MapManager::instance;
 
 MapManager::MapManager()
 	: mChunkArray(new Chunk[MEMORY_POOL_SIZE])
@@ -38,24 +37,19 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 	mLastChunkPosition = ChunkMath::ToChunkPos(camera.GetPosition());
 
 	int32_t loadHalfExtent = StreamingPolicy::GetLoadHalfExtent();
-
-	const int32_t halfZ = WorldConfig::WORLD_SIZE_Z / 2;
-	const int32_t halfX = WorldConfig::WORLD_SIZE_X / 2;
-	const int32_t halfY = WorldConfig::WORLD_SIZE_Y / 2;
-
 	int32_t chunkSize = WorldConfig::CHUNK_SIZE;
 
 	// 한 번 더 반복되면, Invoke로 호출하도록 추상화
-	int32_t back = max(-halfZ, mLastChunkPosition.z - loadHalfExtent); // 월드 벗어나는 거 로드 안하도록
-	int32_t front = min(halfZ - chunkSize, mLastChunkPosition.z + loadHalfExtent);
+	int32_t back = max(WorldConfig::WORLD_MIN_Z, mLastChunkPosition.z - loadHalfExtent); // 월드 벗어나는 거 로드 안하도록
+	int32_t front = min(WorldConfig::WORLD_MAX_Z - chunkSize, mLastChunkPosition.z + loadHalfExtent);
 	for (int32_t i = back; i <= front; i += chunkSize)
 	{
-		int32_t left = max(-halfX, mLastChunkPosition.x - loadHalfExtent);
-		int32_t right = min(halfX - chunkSize, mLastChunkPosition.x + loadHalfExtent);
+		int32_t left = max(WorldConfig::WORLD_MIN_X, mLastChunkPosition.x - loadHalfExtent);
+		int32_t right = min(WorldConfig::WORLD_MAX_X - chunkSize, mLastChunkPosition.x + loadHalfExtent);
 		for (int32_t j = left; j <= right; j += chunkSize)
 		{
-			int32_t bottom = max(-halfY, mLastChunkPosition.y - loadHalfExtent);
-			int32_t top = min(halfY - chunkSize, mLastChunkPosition.y + loadHalfExtent);
+			int32_t bottom = max(WorldConfig::WORLD_MIN_Y, mLastChunkPosition.y - loadHalfExtent);
+			int32_t top = min(WorldConfig::WORLD_MAX_Y - chunkSize, mLastChunkPosition.y + loadHalfExtent);
 			for (int32_t k = bottom; k <= top; k += chunkSize)
 			{
 				IVector3 chunkPos(j, k, i);
@@ -162,3 +156,5 @@ MapManager::~MapManager()
 {
 	delete[] mChunkArray;
 }
+
+

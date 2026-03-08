@@ -1,8 +1,5 @@
 #pragma once
 
-#pragma comment(lib, "user32")
-#pragma comment(lib, "d3d11")
-
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <cassert>
@@ -11,16 +8,17 @@
 using Microsoft::WRL::ComPtr;
 
 class GPUResourceService;
+class TextureManager;
 
 class SkyBox
 {
 public:
-	SkyBox(GPUResourceService& gpuResourceService);
+	SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureManager);
 	~SkyBox() = default;
 	SkyBox(const SkyBox& other) = delete;
 	SkyBox& operator=(const SkyBox& rhs) = delete;
 
-	LPCWSTR GetShaderFileName() const { return L"shaders/SkyBox.hlsl"; }
+	LPCWSTR GetShaderFilePath() const { return L"shaders/SkyBox.hlsl"; }
 
 	void BeginFrame(ID3D11DeviceContext* context, const Camera& camera);
 	void Draw(ID3D11DeviceContext* context);
@@ -30,6 +28,7 @@ private:
 	static constexpr uint32_t SKYBOX_INDEX_COUNT = 36;
 
 	GPUResourceService& mGPUResourceService;
+	TextureManager& mTextureManager;
 
 	ComPtr<ID3D11Buffer> mVertexBuffer;
 	ComPtr<ID3D11Buffer> mIndexBuffer;
@@ -38,8 +37,6 @@ private:
 	ComPtr<ID3D11RasterizerState> mRasterizerState;
 	ComPtr<ID3D11DepthStencilState> mDepthStencilState;
 	ComPtr<ID3D11SamplerState> mSamplerState;
-
-	ComPtr<ID3D11ShaderResourceView> mShaderResourceView;
 
 	ComPtr<ID3D11VertexShader> mVertexShader;
 	ComPtr<ID3D11PixelShader> mPixelShader;

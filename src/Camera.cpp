@@ -17,7 +17,7 @@ Camera::Camera(const Vector3 position, const Vector3 rotation)
 	CreateViewMatrix(Vector3(), Vector3(), 0.0f);
 }
 
-void Camera::Update(const InputManager& inputManager, const float deltaTime)
+void Camera::Update(const InputManager& inputManager, const float deltaTime, MapManager& mapManager)
 {
 	Vector3 position = inputManager.GetKeyboardMovement();
 	Vector3 mouseMovement = inputManager.GetMouseMovement();
@@ -31,13 +31,12 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime)
 
 	if (inputManager.IsLeftButtonDown())
 	{
-		TryRemoveBlock();
+		TryRemoveBlock(mapManager);
 	}
 }
 
-void Camera::TryRemoveBlock() const
+void Camera::TryRemoveBlock(MapManager& mapManager) const
 {
-	MapManager& mapManager = MapManager::GetInstance();
 	
 	Vector3 forward = GetForwardDirection();
 	constexpr float STEP = 0.1f;
@@ -90,4 +89,8 @@ void Camera::CreatePjoectionMatrix()
 
 	mProjMatrix = DirectX::XMMatrixPerspectiveFovLH(FOV_RADIAN, ASPECT_RATIO, WorldConfig::NEAR_Z, WorldConfig::FAR_Z);
 }
+
+
+
+
 

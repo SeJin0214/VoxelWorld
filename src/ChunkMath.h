@@ -28,4 +28,11 @@ public:
 		ChunkKey result = ((z << 40) | (y << 20) | x);
 		return result;
 	}
+
+	static int GetChunkSeed2D(const IVector3 chunkPosition)
+	{
+		// Y는 제외하고 X,Z만 사용
+		return (chunkPosition.x * 73856093) ^ (chunkPosition.z * 83492791);
+	}
+
 };

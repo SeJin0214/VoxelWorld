@@ -1,10 +1,44 @@
 #include <cassert>
-#include <cstring>
+
 #include "Chunk.h"
-#include "Logger.h"
+#include "BiomePolicy.h"
+#include "ChunkMath.h"
 #include "FastNoiseLite.h"
-#include "MapManager.h"
 #include "WorldConfig.h"
+
+namespace
+{
+	struct BiomeBlockRule
+	{
+		BlockType Surface;
+		BlockType Subsurface;
+		BlockType Deep;
+		uint32_t SubsurfaceDepth;
+		uint32_t Amplitude;
+		float Frequency;
+	};
+
+	// 얘네도 나중에 JSON으로 빼자 
+	constexpr BiomeBlockRule BIOME_RULES[static_cast<uint32_t>(BiomeType::Size)] =
+	{
+		// Plains
+		{ BlockType::Grass, BlockType::Dirt, BlockType::Stone, 3u, WorldConfig::WORLD_MAX_Y / 3, 0.5f},
+		// Desert
+		{ BlockType::Sand, BlockType::SandStone, BlockType::Stone, 4u, WorldConfig::WORLD_MAX_Y / 2, 0.3f},
+		// Snow
+		{ BlockType::SnowGrass, BlockType::Dirt, BlockType::Stone, 3u, WorldConfig::WORLD_MAX_Y / 2, 0.2f},
+	};
+
+	static_assert(static_cast<uint32_t>(BiomeType::Plains) == 0, "BiomeType order mismatch");
+	static_assert(static_cast<uint32_t>(BiomeType::Desert) == 1, "BiomeType order mismatch");
+	static_assert(static_cast<uint32_t>(BiomeType::Snow) == 2, "BiomeType order mismatch");
+
+	inline const BiomeBlockRule& GetBiomeRule(const BiomeType biome)
+	{
+		assert(BiomeType::Size != biome);
+		return BIOME_RULES[static_cast<uint32_t>(biome)];
+	}
+}
 
 void Chunk::Init(const IVector3 chunkPosition)
 {
@@ -12,47 +46,56 @@ void Chunk::Init(const IVector3 chunkPosition)
 	mChunkPosition = chunkPosition;
 	mbIsDirty = true;
 
-	FastNoiseLite noise;
-	noise.SetSeed(GetChunkSeed2D());
-	noise.SetNoiseType(FastNoiseLite::NoiseType::NoiseType_Perlin);
-	noise.SetFrequency(0.2f);
+	const BiomeType biome = BiomePolicy::ResolveBiomeAtChunk(chunkPosition);
+	const BiomeBlockRule& rule = GetBiomeRule(biome);
 
-	const int32_t amplitude = WorldConfig::WORLD_SIZE_Y;
-	int32_t startY = static_cast<int32_t>(mChunkPosition.y);
+	FastNoiseLite noise;
+	noise.SetSeed(ChunkMath::GetChunkSeed2D(chunkPosition));
+	noise.SetNoiseType(FastNoiseLite::NoiseType::NoiseType_Perlin);
+	noise.SetFrequency(rule.Frequency);
+
+	const int32_t amplitude = rule.Amplitude;
+	const int32_t startY = static_cast<int32_t>(mChunkPosition.y);
 
 	for (int32_t z = 0; z < CHUNK_SIZE; ++z)
 	{
 		for (int32_t x = 0; x < CHUNK_SIZE; ++x)
 		{
-			float heightValue = noise.GetNoise(static_cast<float>(mChunkPosition.x + x), static_cast<float>(mChunkPosition.z + z));
-			int32_t worldHeight = static_cast<int32_t>(heightValue * amplitude * 0.5f);
+			// 옥타브 한 장만 먼저 적용하기
+			const float octave = noise.GetNoise(static_cast<float>(mChunkPosition.x + x), static_cast<float>(mChunkPosition.z + z));
+			const int32_t worldHeight = static_cast<int32_t>(octave * amplitude * 0.5f);
 
 			for (int32_t y = 0; y < CHUNK_SIZE; ++y)
 			{
-				int32_t currentWorldY = startY + y;
-				if (currentWorldY <= worldHeight)
+				const int32_t currentWorldY = startY + y;
+				if (currentWorldY > worldHeight)
 				{
-					mGrid[z][x][y] = true;
-					++mActiveBlockCount;
+					mGrid[z][x][y] = BlockType::Air;
+					continue;
+				}
+
+				const uint32_t depthFromSurface = static_cast<uint32_t>(worldHeight - currentWorldY);
+				if (depthFromSurface == 0)
+				{
+					mGrid[z][x][y] = rule.Surface;
+				}
+				else if (depthFromSurface <= rule.SubsurfaceDepth)
+				{
+					mGrid[z][x][y] = rule.Subsurface;
 				}
 				else
 				{
-					mGrid[z][x][y] = false;
+					mGrid[z][x][y] = rule.Deep;
 				}
+				++mActiveBlockCount;
 			}
 		}
 	}
 }
 
-int Chunk::GetChunkSeed2D() const
-{
-	// Y는 제외하고 X,Z만 사용
-	return (mChunkPosition.x * 73856093) ^ (mChunkPosition.z * 83492791);
-}
-
 bool Chunk::IsBlockAt(const Vector3 blockPosition) const
 {
-	IVector3 localPos(
+	const IVector3 localPos(
 		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x,
 		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y,
 		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z
@@ -60,12 +103,12 @@ bool Chunk::IsBlockAt(const Vector3 blockPosition) const
 	assert(localPos.x >= 0 && localPos.x < CHUNK_SIZE
 		&& localPos.y >= 0 && localPos.y < CHUNK_SIZE
 		&& localPos.z >= 0 && localPos.z < CHUNK_SIZE);
-	return mGrid[localPos.z][localPos.x][localPos.y];
+	return mGrid[localPos.z][localPos.x][localPos.y] != BlockType::Air;
 }
 
 void Chunk::RemoveBlockAt(const Vector3 blockPosition)
 {
-	IVector3 localPos(
+	const IVector3 localPos(
 		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x,
 		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y,
 		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z
@@ -74,9 +117,9 @@ void Chunk::RemoveBlockAt(const Vector3 blockPosition)
 		&& localPos.y >= 0 && localPos.y < CHUNK_SIZE
 		&& localPos.z >= 0 && localPos.z < CHUNK_SIZE);
 
-	assert(mGrid[localPos.z][localPos.x][localPos.y]);
+	assert(mGrid[localPos.z][localPos.x][localPos.y] != BlockType::Air);
 
-	mGrid[localPos.z][localPos.x][localPos.y] = false;
+	mGrid[localPos.z][localPos.x][localPos.y] = BlockType::Air;
 	mbIsDirty = true;
 	DecreaseActiveBlockCount();
 }
@@ -88,7 +131,16 @@ bool Chunk::IsAir(const int32_t localX, const int32_t localY, const int32_t loca
 		return true;
 	}
 
-	return !mGrid[localZ][localX][localY];
+	return mGrid[localZ][localX][localY] == BlockType::Air;
+}
+
+BlockType Chunk::GetBlockType(const int32_t localX, const int32_t localY, const int32_t localZ) const
+{
+	if (localX < 0 || CHUNK_SIZE <= localX || localY < 0 || CHUNK_SIZE <= localY || localZ < 0 || CHUNK_SIZE <= localZ)
+	{
+		return BlockType::Air;
+	}
+	return mGrid[localZ][localX][localY];
 }
 
 void Chunk::DecreaseActiveBlockCount()
@@ -96,4 +148,3 @@ void Chunk::DecreaseActiveBlockCount()
 	assert(mActiveBlockCount != 0);
 	--mActiveBlockCount;
 }
-
