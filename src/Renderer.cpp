@@ -113,7 +113,7 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 	constexpr uint32_t MAX_CREATE_COUNT_PER_FRAME = 20;
 	ProcessBufferCreationQueue(MAX_CREATE_COUNT_PER_FRAME);
 
-	IVector3 cameraChunkPos = ChunkMath::ToChunkPos(camera.GetPosition());
+	IVector3 cameraChunkPos = ChunkMath::ToChunkOrigin(camera.GetPosition());
 
 	constexpr uint32_t MESH_MAX_CREATE_COUNT_PER_FRAME = 4;
 	ProcessMeshCreation(MESH_MAX_CREATE_COUNT_PER_FRAME, cameraChunkPos, mapManager);

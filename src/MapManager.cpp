@@ -34,7 +34,7 @@ void MapManager::Update(const Camera& camera, Renderer& renderer)
 
 void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 {
-	mLastChunkPosition = ChunkMath::ToChunkPos(camera.GetPosition());
+	mLastChunkPosition = ChunkMath::ToChunkOrigin(camera.GetPosition());
 
 	int32_t loadHalfExtent = StreamingPolicy::GetLoadHalfExtent();
 	int32_t chunkSize = WorldConfig::CHUNK_SIZE;
@@ -94,14 +94,14 @@ void MapManager::ClearDirty(const ChunkKey key)
 
 bool MapManager::IsMovedChunkPosition(const Camera& camera) const
 {
-	return mLastChunkPosition != ChunkMath::ToChunkPos(camera.GetPosition());
+	return mLastChunkPosition != ChunkMath::ToChunkOrigin(camera.GetPosition());
 }
 
 bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 {
 	// 여기도 안 맞네 
 	// 이 포지션으로 청크 찾기
-	ChunkKey key = ChunkMath::ToChunkKey(ChunkMath::ToChunkPos(blockPosition));
+	ChunkKey key = ChunkMath::ToChunkKey(ChunkMath::ToChunkOrigin(blockPosition));
 	const auto& iter = mChunks.find(key);
 	if (iter == mChunks.end())
 	{
@@ -115,7 +115,7 @@ bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 
 void MapManager::RemoveBlockAt(const Vector3 blockPosition)
 {
-	ChunkKey key = ChunkMath::ToChunkKey(ChunkMath::ToChunkPos(blockPosition));
+	ChunkKey key = ChunkMath::ToChunkKey(ChunkMath::ToChunkOrigin(blockPosition));
 	assert(mChunks.find(key) != mChunks.end());
 
 	int32_t index = mChunks[key];

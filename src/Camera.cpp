@@ -46,6 +46,7 @@ void Camera::TryRemoveBlock(MapManager& mapManager) const
 		Vector3 checkPos = mPosition + forward * o;
 		o += STEP;
 
+		Logger::LogLine("블록 제거 Try at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
 		if (mapManager.IsBlockAt(checkPos))
 		{
 			mapManager.RemoveBlockAt(checkPos);

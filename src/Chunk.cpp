@@ -96,15 +96,19 @@ void Chunk::Init(const IVector3 chunkPosition)
 
 bool Chunk::IsBlockAt(const Vector3 blockPosition) const
 {
-	assert(static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f >= 0.0f);
-	assert(static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f >= 0.0f);
-	assert(static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f >= 0.0f);
+	assert(blockPosition.x >= mChunkPosition.x - 0.5f && blockPosition.x < mChunkPosition.x + CHUNK_SIZE - 0.5f);
+	assert(blockPosition.y >= mChunkPosition.y - 0.5f && blockPosition.y < mChunkPosition.y + CHUNK_SIZE - 0.5f);
+	assert(blockPosition.z >= mChunkPosition.z - 0.5f && blockPosition.z < mChunkPosition.z + CHUNK_SIZE - 0.5f);
+
+	// Block은 Local임 양수고
+	// -0.5 ~ 0.499 까지 0 
 
 	const IVector3 localPos(
-		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f,
-		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f,
-		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f
+		blockPosition.x + 0.5f - mChunkPosition.x,
+		blockPosition.y + 0.5f - mChunkPosition.y,
+		blockPosition.z + 0.5f - mChunkPosition.z
 	);
+
 	assert(localPos.x >= 0 && localPos.x < CHUNK_SIZE
 		&& localPos.y >= 0 && localPos.y < CHUNK_SIZE
 		&& localPos.z >= 0 && localPos.z < CHUNK_SIZE);
@@ -113,13 +117,10 @@ bool Chunk::IsBlockAt(const Vector3 blockPosition) const
 
 void Chunk::RemoveBlockAt(const Vector3 blockPosition)
 {
-	assert(static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f >= 0.0f);
-	assert(static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f >= 0.0f);
-	assert(static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f >= 0.0f);
 	const IVector3 localPos(
-		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f,
-		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f,
-		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f
+		blockPosition.x + 0.5f - mChunkPosition.x,
+		blockPosition.y + 0.5f - mChunkPosition.y,
+		blockPosition.z + 0.5f - mChunkPosition.z
 	);
 	assert(localPos.x >= 0 && localPos.x < CHUNK_SIZE
 		&& localPos.y >= 0 && localPos.y < CHUNK_SIZE
