@@ -24,11 +24,12 @@ using std::unordered_set;
 using Microsoft::WRL::ComPtr;
 
 class MapManager;
+class MeshBuilder;
 
 class Renderer
 {
 public:
-	Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager);
+	Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder);
 	void Present();
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 	void Update(const Camera& camera, const float deltaTime, MapManager& mapManager);
@@ -111,10 +112,8 @@ private:
 private:
 	GPUResourceService& mGPUResourceService;
 	TextureManager& mTextureManager;
+	MeshBuilder& mMeshBuilder;
 	SkyBox mSkyBox;
-
-
-	void RenderDebugRay(const Camera& camera);
 
 
 private:
@@ -168,6 +167,9 @@ private:
 
 
 };
+
+
+
 
 
 

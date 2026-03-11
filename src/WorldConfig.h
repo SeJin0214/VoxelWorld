@@ -35,4 +35,7 @@ struct WorldConfig
 
 	// Renderer
 	
+	// BlockLoader
+	static constexpr const char* ATLAS_JSON_PATH = "assets/Atlas.json";
+
 };

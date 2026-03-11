@@ -1,8 +1,10 @@
 #include "MeshBuilder.h"
 #include "BlockMeshData.h"
 #include "WorldConfig.h"
+#include "BlockMaterialTable.h"
 
-MeshBuilder::MeshBuilder()
+MeshBuilder::MeshBuilder(BlockMaterialTable& blockMaterialTable)
+	: mBlockMaterialTable(blockMaterialTable)
 {
 	mMeshData.Vertices.reserve(MAX_VERTEX_COUNT);
 	mMeshData.Indices.reserve(MAX_INDEX_COUNT);
@@ -56,7 +58,25 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 					{
 						continue;
 					}
-					BlockMeshData::AddFace(mMeshData.Vertices, mMeshData.Indices, static_cast<Direction>(i), IVector3(x, y, z), chunkWorldPosition, type);
+					
+					BlockMaterial bm = mBlockMaterialTable.Table.find(type)->second;
+					AtlasXY xy;
+					if (static_cast<uint32_t>(Direction::Bottom) == i)
+					{
+						xy = BlockMaterial::GetAtlasXY(bm.GetBottom());
+					}
+					else if (static_cast<uint32_t>(Direction::Top) == i)
+					{
+						xy = BlockMaterial::GetAtlasXY(bm.GetTop());
+					}
+					else
+					{
+						xy = BlockMaterial::GetAtlasXY(bm.GetSide());
+					}
+					Vector2 uv(xy.StartX == 0 ? xy.StartX : static_cast<float>(xy.StartX) / mBlockMaterialTable.AtlasSize, 
+						xy.StartY == 0 ? xy.StartY : static_cast<float>(xy.StartY) / mBlockMaterialTable.AtlasSize);
+					//printf("%f, %f\n", uv.x, uv.y);
+					BlockMeshData::AddFace(mMeshData.Vertices, mMeshData.Indices, static_cast<Direction>(i), IVector3(x, y, z), chunkWorldPosition, uv);
 				}
 			}
 		}

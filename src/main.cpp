@@ -11,6 +11,7 @@
 #include <windows.h>
 #include <cassert>
 #include <string>
+#include "BlockLoader.h"
 #include "Renderer.h"
 #include "ScreenManager.h"
 #include "Logger.h"
@@ -19,6 +20,7 @@
 #include "MapManager.h"
 #include "ScopedProfiler.h"
 #include "TextureManager.h"
+#include "BlockMaterialTable.h"
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -64,15 +66,19 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	ScreenManager::GetInstance().CreateHWND(windowClass, title, hInstance);
 	HWND hWnd = ScreenManager::GetInstance().GetHWND();
 
+	BlockMaterialTable blockMaterialTable = BlockLoader::Load(WorldConfig::ATLAS_JSON_PATH);
+	MeshBuilder meshBuilder(blockMaterialTable);
+
 	DeviceFactory::DeviceBundle deviceBundle = DeviceFactory::CreateDeviceAndSwapChain(hWnd);
 	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
 	TextureManager textureManager(gpuResourceService);
-	
-	MapManager mapManager;
-	Renderer renderer(deviceBundle, gpuResourceService, textureManager);
+
+	// MeshBuilder에게 BlockMaterialTable 주입하고, MeshBuilder를 Renderer에게 주입하기
+	Renderer renderer(deviceBundle, gpuResourceService, textureManager, meshBuilder);
 	renderer.Create();
 	renderer.SetupStaticPipelineState();
 
+	MapManager mapManager;
 	InputManager inputManager;
 
 	Camera camera(Vector3(5, 0, -50), Vector3());
@@ -89,10 +95,10 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
 
 		// 25ms 40FPS 
-		if (timer.GetFPS() <= 40)
-		{
-			std::cout << "FPS dropped to " << timer.GetFPS() << "!, frameNumber: " << frameNumber << std::endl;
-		}
+		//if (timer.GetFPS() <= 40)
+		//{
+		//	std::cout << "FPS dropped to " << timer.GetFPS() << "!, frameNumber: " << frameNumber << std::endl;
+		//}
 		//std::cout << " FPS:" << timer.GetFPS() << std::endl;
 
 		//timer.UpdateFPSStats();

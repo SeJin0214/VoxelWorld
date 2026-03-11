@@ -20,7 +20,7 @@
 
 using namespace DirectX;
 
-Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager)
+Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder)
 	: mDevice(deviceBundle.Device)
 	, mDeviceContext(deviceBundle.DeviceContext)
 	, mSwapChain(deviceBundle.SwapChain)
@@ -39,6 +39,7 @@ Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceS
 	, mPipelineQuery(gpuResourceService.CreatePipelineStatisticsQuery())
 	, mGPUResourceService(gpuResourceService)
 	, mTextureManager(textureManager)
+	, mMeshBuilder(meshBuilder)
 	, mSkyBox(gpuResourceService, textureManager)
 {
 	assert(mDevice != nullptr && mDeviceContext != nullptr && mSwapChain != nullptr);
@@ -91,18 +92,19 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 		{
 			// 프러스텀에 보이고, 비어있지 않고, 바뀌었다면 생성한다.
 			ScheduleDirtyChunkMesh(ChunkMeshBuildJob(chunkPosition));
-			continue;
 		}
 
 		ChunkKey key = ChunkMath::ToChunkKey(chunkPosition);
-
-		assert(chunk.IsDirty() == false);
-		assert(mChunkMeshs.contains(key));
+		if (mChunkMeshs.contains(key) == false)
+		{
+			continue;
+		}
 
 		ChunkMesh& chunkMesh = mChunkMeshs[key];
 		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
 		//++drawCallCount;
 	}
+
 
 	mSkyBox.BeginFrame(mDeviceContext.Get(), camera);
 	mSkyBox.Draw(mDeviceContext.Get());
@@ -129,8 +131,6 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 	//}
 	
 	//LogPipelineState(stats, drawCallCount, deltaTime);
-
-	//RenderDebugRay(camera);
 
 	Present();
 }
@@ -253,44 +253,6 @@ ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 	return instanceBuffer.Detach();
 }
 
-void Renderer::RenderDebugRay(const Camera& camera)
-{
-	if (mDebugRayVertexBuffer.Get() == nullptr)
-	{
-		mDebugRayVertexBuffer = mGPUResourceService.CreateDynamicVertexBuffer(VERTEX_BYTE * 2);
-	}
-
-	Vector3 origin = camera.GetPosition();
-	Vector3 dir = camera.GetForwardDirection();
-	if (dir.LengthSquared() < 1e-6f)
-	{
-		return;
-	}
-
-	dir.Normalize();
-	Vector3 end = origin + dir * 6.0f;
-
-	BlockVertex rayVerts[2] =
-	{
-		{ origin, Vector3::Zero, Vector2(-1.0f, 0.0f) },
-		{ end, Vector3::Zero, Vector2(-1.0f, 0.0f) },
-	};
-
-	mGPUResourceService.UpdateDynamicBuffer(mDebugRayVertexBuffer.Get(), rayVerts, sizeof(rayVerts));
-	UpdateConstantBuffer(camera, Vector3::Zero);
-
-	const UINT stride = VERTEX_BYTE;
-	const UINT offset = 0;
-	ID3D11Buffer* vb = mDebugRayVertexBuffer.Get();
-
-	mDeviceContext->OMSetRenderTargets(1, mRenderTargetView.GetAddressOf(), mDepthView.Get());
-	mDeviceContext->OMSetDepthStencilState(mDepthState.Get(), 1);
-	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-	mDeviceContext->IASetVertexBuffers(0, 1, &vb, &stride, &offset);
-	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
-	mDeviceContext->Draw(2, 0);
-	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-}
 
 void Renderer::Release()
 {
@@ -425,8 +387,7 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 		return false;
 	}
 
-	MeshBuilder& meshBuilder = mapManager.GetMeshBuilder();
-	const MeshData& newMeshData = meshBuilder.Build(chunk);
+	const MeshData& newMeshData = mMeshBuilder.Build(chunk);
 
 	const uint32_t newVertexBytes = static_cast<uint32_t>(newMeshData.Vertices.size()) * VERTEX_BYTE;
 	const uint32_t newIndexBytes = static_cast<uint32_t>(newMeshData.Indices.size()) * INDEX_BYTE;
@@ -491,17 +452,4 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 	mapManager.ClearDirty(key);
 	return true;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
 

@@ -22,11 +22,11 @@ namespace
 	constexpr BiomeBlockRule BIOME_RULES[static_cast<uint32_t>(BiomeType::Size)] =
 	{
 		// Plains
-		{ BlockType::Grass, BlockType::Dirt, BlockType::Stone, 3u, WorldConfig::WORLD_MAX_Y / 3, 0.5f},
+		{ BlockType::Grass, BlockType::Dirt, BlockType::Stone, 3u, 16, 0.1f},
 		// Desert
-		{ BlockType::Sand, BlockType::SandStone, BlockType::Stone, 4u, WorldConfig::WORLD_MAX_Y / 2, 0.3f},
+		{ BlockType::Sand, BlockType::Dirt, BlockType::Stone, 4u, 16, 0.05f},
 		// Snow
-		{ BlockType::SnowGrass, BlockType::Dirt, BlockType::Stone, 3u, WorldConfig::WORLD_MAX_Y / 2, 0.2f},
+		{ BlockType::Snow, BlockType::Dirt, BlockType::Stone, 3u, 16, 0.04f},
 	};
 
 	static_assert(static_cast<uint32_t>(BiomeType::Plains) == 0, "BiomeType order mismatch");
@@ -62,8 +62,9 @@ void Chunk::Init(const IVector3 chunkPosition)
 		for (int32_t x = 0; x < CHUNK_SIZE; ++x)
 		{
 			// 옥타브 한 장만 먼저 적용하기
-			const float octave = noise.GetNoise(static_cast<float>(mChunkPosition.x + x), static_cast<float>(mChunkPosition.z + z));
-			const int32_t worldHeight = static_cast<int32_t>(octave * amplitude * 0.5f);
+			// 양수로 만들어버리고
+			const float octave = (noise.GetNoise(static_cast<float>(mChunkPosition.x + x), static_cast<float>(mChunkPosition.z + z)) + 1) * 0.5f;
+			const int32_t worldHeight = static_cast<int32_t>(octave * amplitude);
 
 			for (int32_t y = 0; y < CHUNK_SIZE; ++y)
 			{
@@ -95,10 +96,14 @@ void Chunk::Init(const IVector3 chunkPosition)
 
 bool Chunk::IsBlockAt(const Vector3 blockPosition) const
 {
+	assert(static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f >= 0.0f);
+	assert(static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f >= 0.0f);
+	assert(static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f >= 0.0f);
+
 	const IVector3 localPos(
-		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x,
-		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y,
-		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z
+		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f,
+		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f,
+		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f
 	);
 	assert(localPos.x >= 0 && localPos.x < CHUNK_SIZE
 		&& localPos.y >= 0 && localPos.y < CHUNK_SIZE
@@ -108,10 +113,13 @@ bool Chunk::IsBlockAt(const Vector3 blockPosition) const
 
 void Chunk::RemoveBlockAt(const Vector3 blockPosition)
 {
+	assert(static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f >= 0.0f);
+	assert(static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f >= 0.0f);
+	assert(static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f >= 0.0f);
 	const IVector3 localPos(
-		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x,
-		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y,
-		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z
+		static_cast<int32_t>(blockPosition.x) - mChunkPosition.x + 0.5f,
+		static_cast<int32_t>(blockPosition.y) - mChunkPosition.y + 0.5f,
+		static_cast<int32_t>(blockPosition.z) - mChunkPosition.z + 0.5f
 	);
 	assert(localPos.x >= 0 && localPos.x < CHUNK_SIZE
 		&& localPos.y >= 0 && localPos.y < CHUNK_SIZE
@@ -148,3 +156,8 @@ void Chunk::DecreaseActiveBlockCount()
 	assert(mActiveBlockCount != 0);
 	--mActiveBlockCount;
 }
+
+
+
+
+

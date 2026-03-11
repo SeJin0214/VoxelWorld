@@ -21,6 +21,7 @@ public:
 
 private:
 	GPUResourceService& mGPUResourceService;
+
 	ComPtr<ID3D11ShaderResourceView> mBlockAtlasSRV;
 	ComPtr<ID3D11ShaderResourceView> mSkyBoxSRV;
 

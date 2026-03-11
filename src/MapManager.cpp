@@ -99,6 +99,7 @@ bool MapManager::IsMovedChunkPosition(const Camera& camera) const
 
 bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 {
+	// 여기도 안 맞네 
 	// 이 포지션으로 청크 찾기
 	ChunkKey key = ChunkMath::ToChunkKey(ChunkMath::ToChunkPos(blockPosition));
 	const auto& iter = mChunks.find(key);

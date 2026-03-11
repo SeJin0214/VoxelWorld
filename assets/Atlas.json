@@ -1,38 +1,40 @@
 {
+  "texture_path": "assets/Atlas.png",
   "meta": { "atlas_w": 64, "atlas_h": 64 },
-  "tile_size": 16
+  "tile_size": 16,
   "blocks": {
-    "DIRT": { 
-      "x": 0,  
-      "y": 0 
+    "dirt": { 
+      "id": 1,
+      "u": 0,  
+      "v": 0 
     },
-    "GRASS_TOP": { 
-      "x": 16, 
-      "y": 0 
-    },
-    "SEND_TOP": {
-      "x": 32,
-      "y": 0
-    },
-    "SNOW_TOP": {
-      "x": 48,
-      "y": 0
-    },
-    "GRASS_DIRT_SIDE": {
-      "x": 0,  
-      "y": 16
-    },
-    "STONE": {
-      "x": 16,
-      "y": 16
-    },
-    "SEND_DIRT_SIDE": {
-      "x": 0,
-      "y": 32
-    },
-    "SNOW_DIRT_SIDE": {
-      "x": 0,
-      "y": 48
-    }
+    "grass_top": { 
+      "u": 16, 
+      "v": 0 
+    },
+    "send_top": {
+      "u": 32,
+      "v": 0
+    },
+    "snow_top": {
+      "u": 48,
+      "v": 0
+    },
+    "grass_dirt_side": {
+      "u": 0,   
+      "v": 16
+    },
+    "stone": {
+      "u": 16,
+      "v": 16
+    },
+    "send_dirt_side": {
+      "u": 0,
+      "v": 32
+    },
+    "snow_dirt_side": {
+      "u": 0,
+      "v": 48
+    }
   }
 }

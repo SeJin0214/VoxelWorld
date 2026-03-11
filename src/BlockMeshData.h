@@ -19,7 +19,7 @@ class BlockMeshData
 {
 public:
 	static void AddFace(std::vector<BlockVertex>& vertices, std::vector<uint32_t>& indices, const Direction direction, 
-		const IVector3 position, const IVector3 chunkWorldPosition, const BlockType type);
+		const IVector3 position, const IVector3 chunkWorldPosition, const Vector2 uv);
 
 private:
 	static constexpr uint32_t FACE_COUNT = static_cast<uint32_t>(Direction::Size);

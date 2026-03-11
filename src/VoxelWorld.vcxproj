@@ -135,6 +135,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="BiomePolicy.cpp" />
+    <ClCompile Include="BlockLoader.cpp" />
     <ClCompile Include="BlockMeshData.cpp" />
     <ClCompile Include="BufferPool.cpp" />
     <ClCompile Include="Camera.cpp" />
@@ -154,7 +155,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="BiomePolicy.h" />
+    <ClInclude Include="BlockLoader.h" />
+    <ClInclude Include="BlockMaterial.h" />
+    <ClInclude Include="BlockMaterialTable.h" />
     <ClInclude Include="BlockMeshData.h" />
+    <ClInclude Include="BlockTextureType.h" />
     <ClInclude Include="BlockType.h" />
     <ClInclude Include="BufferPool.h" />
     <ClInclude Include="Camera.h" />

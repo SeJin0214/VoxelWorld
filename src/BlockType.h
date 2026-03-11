@@ -7,10 +7,9 @@ enum class BlockType : uint8_t
 	// Surface
 	Sand,
 	Grass,
-	SnowGrass,
+	Snow,
 
 	// Subsurface
-	SandStone,
 	Dirt,
 
 	// Deep

@@ -17,7 +17,6 @@ public:
 	MapManager();
 	~MapManager();
 
-	MeshBuilder& GetMeshBuilder() { return mMeshBuilder; }
 	const std::vector<ChunkInfo>& GetUsedChunks() const { return mUsedChunks; }
 	bool HasChunk(const ChunkKey key) const { return mChunks.contains(key); }
 	const Chunk& GetChunk(const ChunkInfo& chunkInfo) const;
@@ -37,7 +36,6 @@ private:
 		MEMORY_POOL_SIZE = 16384
 	};
 
-	MeshBuilder mMeshBuilder;
 
 	// 비트 연산으로 정수를 만드는 게 나을 듯
 	std::unordered_map<ChunkKey, int32_t> mChunks; // 탐색용
