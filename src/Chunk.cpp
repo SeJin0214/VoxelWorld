@@ -50,7 +50,7 @@ void Chunk::Init(const IVector3 chunkPosition)
 	const BiomeBlockRule& rule = GetBiomeRule(biome);
 
 	FastNoiseLite noise;
-	noise.SetSeed(ChunkMath::GetChunkSeed2D(chunkPosition));
+	noise.SetSeed(WorldConfig::WORLD_SEED);
 	noise.SetNoiseType(FastNoiseLite::NoiseType::NoiseType_Perlin);
 	noise.SetFrequency(rule.Frequency);
 

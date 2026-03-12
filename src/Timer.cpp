@@ -51,7 +51,14 @@ double Timer::EndSectionMS() const
 	LARGE_INTEGER sectionEnd;
 	QueryPerformanceCounter(&sectionEnd);
 
-	return (double)(sectionEnd.QuadPart - mSectionStart.QuadPart) * 1000.0 * mSecondsPerCount;
+	return static_cast<double>(sectionEnd.QuadPart - mSectionStart.QuadPart) * 1000.0 * mSecondsPerCount;
+}
+
+double Timer::GetMonotonicSeconds() const
+{
+    LARGE_INTEGER monotonicSeconds;
+    QueryPerformanceCounter(&monotonicSeconds);
+    return static_cast<double>(monotonicSeconds.QuadPart) * mSecondsPerCount;
 }
 
 

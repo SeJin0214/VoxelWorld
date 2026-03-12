@@ -12,6 +12,7 @@ Camera::Camera(const Vector3 position, const Vector3 rotation)
 	: mPosition(position)
 	, mRotation(rotation)
 	, mbTransformDirty(false)
+	, mSpeedLevel(0)
 {
 	CreatePjoectionMatrix();
 	CreateViewMatrix(Vector3(), Vector3(), 0.0f);
@@ -32,6 +33,11 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime, Map
 	if (inputManager.IsLeftButtonDown())
 	{
 		TryRemoveBlock(mapManager);
+	}
+
+	if (inputManager.ShouldChangedSpeed())
+	{
+		mSpeedLevel = (mSpeedLevel + 1) % MAX_LEVEL;
 	}
 }
 
@@ -71,8 +77,7 @@ void Camera::CreateViewMatrix(const Vector3 position, const Vector3 mouseMovemen
 	Quaternion q = Quaternion::CreateFromYawPitchRoll(rotationRad);
 	mBasis = Matrix::CreateFromQuaternion(q);
 
-	constexpr float SPEED = 100.0f;
-
+	const float SPEED = GetCurrentSpeed();
 	mPosition += position.x * mBasis.Right() * SPEED * deltaTime;
 	mPosition += position.y * mBasis.Up() * SPEED * deltaTime;
 	mPosition += position.z * GetForwardDirection() * SPEED * deltaTime;
@@ -91,7 +96,11 @@ void Camera::CreatePjoectionMatrix()
 	mProjMatrix = DirectX::XMMatrixPerspectiveFovLH(FOV_RADIAN, ASPECT_RATIO, WorldConfig::NEAR_Z, WorldConfig::FAR_Z);
 }
 
-
+float Camera::GetCurrentSpeed() const
+{
+	assert(0 <= mSpeedLevel && mSpeedLevel < MAX_LEVEL);
+	return SPEEDS[mSpeedLevel];
+}
 
 
 

@@ -21,6 +21,7 @@ public:
 	Vector3 GetKeyboardMovement() const { return mKeyboardMovement; }
 	bool IsMoved() const { return mbIsMoved; }
 	bool IsLeftButtonDown() const { return mbIsLeftButtonDown; }
+	bool ShouldChangedSpeed() const { return mbShouldChangedSpeed; }
 
 private:
 	std::unique_ptr<Keyboard> mKeyboard;
@@ -32,4 +33,5 @@ private:
 	
 	bool mbIsMoved;
 	bool mbIsLeftButtonDown;
+	bool mbShouldChangedSpeed;
 };

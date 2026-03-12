@@ -13,7 +13,8 @@ public:
 	void Tick();
 	void Reset();
 	float GetDeltaTime() const { return static_cast<float>(mDeltaTime); }
-	int GetFPS() const { return static_cast<int>(1.0 / mDeltaTime); }
+	double GetMonotonicSeconds() const;
+	int32_t GetFPS() const { return static_cast<int32_t>(1.0 / mDeltaTime); }
 	void StartSection();
 	double EndSectionMS() const;
 

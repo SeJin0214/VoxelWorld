@@ -21,6 +21,9 @@
 #include "ScopedProfiler.h"
 #include "TextureManager.h"
 #include "BlockMaterialTable.h"
+#include "RuntimeConfig.h"
+#include "StreamingPolicy.h"
+#include "AdaptiveRenderDistanceController.h"
 
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -73,12 +76,16 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
 	TextureManager textureManager(gpuResourceService);
 
+	RuntimeConfig runtimeConfig;
+	StreamingPolicy streamingPolicy(runtimeConfig);
+	AdaptiveRenderDistanceController adaptiveRenderDistanceController(runtimeConfig);
+
 	// MeshBuilder에게 BlockMaterialTable 주입하고, MeshBuilder를 Renderer에게 주입하기
-	Renderer renderer(deviceBundle, gpuResourceService, textureManager, meshBuilder);
+	Renderer renderer(deviceBundle, gpuResourceService, textureManager, meshBuilder, streamingPolicy);
 	renderer.Create();
 	renderer.SetupStaticPipelineState();
 
-	MapManager mapManager;
+	MapManager mapManager(streamingPolicy);
 	InputManager inputManager;
 
 	Camera camera(Vector3(5, 0, -50), Vector3());
@@ -92,7 +99,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		++frameNumber;
 		timer.Tick();
-		std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
+
+		//std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
 
 		// 25ms 40FPS 
 		//if (timer.GetFPS() <= 40)
@@ -101,9 +109,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		//}
 		//std::cout << " FPS:" << timer.GetFPS() << std::endl;
 
-		//timer.UpdateFPSStats();
+		timer.UpdateFPSStats();
 
-		SetWindowText(hWnd, title.c_str());
+		//SetWindowText(hWnd, title.c_str());
 
 		MSG msg;
 		// 처리할 메시지가 더 이상 없을때 까지 수행
@@ -129,12 +137,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		float deltaTime = timer.GetDeltaTime();
 		camera.Update(inputManager, deltaTime, mapManager);
 
-		// 나중에 경계를 제대로 잡아야 할 거 같다.
+		//printf("%f\n", timer.GetMonotonicSeconds());
+		adaptiveRenderDistanceController.Update(deltaTime, timer.GetFPS(), timer.GetMonotonicSeconds());
 		
 		mapManager.Update(camera, renderer);
 
 		renderer.Update(camera, deltaTime, mapManager);
-		//timer.RenderFPSLog();
+		timer.RenderFPSLog();
 	}
 
 	renderer.Release();
@@ -145,6 +154,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	return 0;
 }
+
+
 
 
 

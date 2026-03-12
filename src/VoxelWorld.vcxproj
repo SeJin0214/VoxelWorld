@@ -134,6 +134,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="AdaptiveRenderDistanceController.cpp" />
     <ClCompile Include="BiomePolicy.cpp" />
     <ClCompile Include="BlockLoader.cpp" />
     <ClCompile Include="BlockMeshData.cpp" />
@@ -147,6 +148,7 @@
     <ClCompile Include="MapManager.cpp" />
     <ClCompile Include="MeshBuilder.cpp" />
     <ClCompile Include="Renderer.cpp" />
+    <ClCompile Include="RuntimeConfig.cpp" />
     <ClCompile Include="ScreenManager.cpp" />
     <ClCompile Include="Logger.cpp" />
     <ClCompile Include="SkyBox.cpp" />
@@ -154,6 +156,7 @@
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AdaptiveRenderDistanceController.h" />
     <ClInclude Include="BiomePolicy.h" />
     <ClInclude Include="BlockLoader.h" />
     <ClInclude Include="BlockMaterial.h" />
@@ -170,6 +173,7 @@
     <ClInclude Include="GPUResourceService.h" />
     <ClInclude Include="MeshBuilder.h" />
     <ClInclude Include="MeshData.h" />
+    <ClInclude Include="RuntimeConfig.h" />
     <ClInclude Include="ScopedProfiler.h" />
     <ClInclude Include="SkyBox.h" />
     <ClInclude Include="StreamingPolicy.h" />

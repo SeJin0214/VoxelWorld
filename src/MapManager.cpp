@@ -7,9 +7,10 @@
 #include "StreamingPolicy.h"
 
 
-MapManager::MapManager()
+MapManager::MapManager(StreamingPolicy& streamingPolicy)
 	: mChunkArray(new Chunk[MEMORY_POOL_SIZE])
 	, mLastChunkPosition{ INT32_MIN, INT32_MIN, INT32_MIN }
+	, mStreamingPolicy(streamingPolicy)
 {
 	mFreePool.reserve(MEMORY_POOL_SIZE);
 	mUsedChunks.reserve(MEMORY_POOL_SIZE);
@@ -36,7 +37,7 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 {
 	mLastChunkPosition = ChunkMath::ToChunkOrigin(camera.GetPosition());
 
-	int32_t loadHalfExtent = StreamingPolicy::GetLoadHalfExtent();
+	int32_t loadHalfExtent = mStreamingPolicy.GetLoadHalfExtent();
 	int32_t chunkSize = WorldConfig::CHUNK_SIZE;
 
 	// 한 번 더 반복되면, Invoke로 호출하도록 추상화
@@ -68,7 +69,7 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 	for (int32_t i = 0; i < mUsedChunks.size(); ++i)
 	{
 		const ChunkInfo& chunkInfo = mUsedChunks[i];
-		if (StreamingPolicy::ShouldKeep(chunkInfo.Position, mLastChunkPosition))
+		if (mStreamingPolicy.ShouldKeep(chunkInfo.Position, mLastChunkPosition))
 		{
 			continue;
 		}
@@ -157,5 +158,7 @@ MapManager::~MapManager()
 {
 	delete[] mChunkArray;
 }
+
+
 
 

@@ -25,8 +25,9 @@ public:
 	bool HasTransformChanged() const { return mbTransformDirty; }
 	bool IsChangedRenderDistance() const { return false; } // 나중에 구현
 
-
 private:
+	static constexpr uint32_t MAX_LEVEL = 3u;
+	static constexpr float SPEEDS[MAX_LEVEL]{ 1.f, 20.f, 100.f };
 
 	Vector3 mPosition;
 	Vector3 mRotation;
@@ -37,13 +38,14 @@ private:
 	Matrix mViewProjMatrix;
 
 	bool mbTransformDirty;
+	uint32_t mSpeedLevel;
 	//bool mbIsDirty;
-	// IsChangedRenderDistance()
-	// 나중에 설정 창에서 조절 가능하게
+
 
 	void TryRemoveBlock(MapManager& mapManager) const;
 	void CreatePjoectionMatrix();
 	void CreateViewMatrix(const Vector3 position, const Vector3 mouseMovement, const float deltaTime);
+	float GetCurrentSpeed() const;
 };
 
 

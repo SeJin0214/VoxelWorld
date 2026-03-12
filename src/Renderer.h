@@ -25,11 +25,12 @@ using Microsoft::WRL::ComPtr;
 
 class MapManager;
 class MeshBuilder;
+class StreamingPolicy;
 
 class Renderer
 {
 public:
-	Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder);
+	Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder, StreamingPolicy& streamingPolicy);
 	void Present();
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 	void Update(const Camera& camera, const float deltaTime, MapManager& mapManager);
@@ -113,6 +114,7 @@ private:
 	GPUResourceService& mGPUResourceService;
 	TextureManager& mTextureManager;
 	MeshBuilder& mMeshBuilder;
+	StreamingPolicy& mStreamingPolicy;
 	SkyBox mSkyBox;
 
 
@@ -167,6 +169,9 @@ private:
 
 
 };
+
+
+
 
 
 

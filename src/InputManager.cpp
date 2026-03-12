@@ -10,6 +10,7 @@ InputManager::InputManager()
 	, mMouseTracker{}
 	, mbIsMoved(false)
 	, mbIsLeftButtonDown(false)
+	, mbShouldChangedSpeed(false)
 {
 	mMouse->SetWindow(ScreenManager::GetInstance().GetHWND());
 	mMouse->SetMode(Mouse::MODE_RELATIVE);
@@ -19,6 +20,8 @@ bool InputManager::Update()
 {
 	mbIsMoved = false;
 	mbIsLeftButtonDown = false;
+	mbShouldChangedSpeed = false;
+
 
 	mKeyboardMovement = Vector3::Zero;
 	Keyboard::State state = mKeyboard->GetState();
@@ -65,6 +68,11 @@ bool InputManager::Update()
 	{
 		mKeyboardMovement.y -= 1.f;
 		//Logger::LogLine("Z 키 누르는 중 - 아래로 이동!\n");
+	}
+
+	if (mKeyboardTracker.pressed.LeftShift)
+	{
+		mbShouldChangedSpeed = true;
 	}
 
 	if (mKeyboardMovement != Vector3::Zero)

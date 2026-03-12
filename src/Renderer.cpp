@@ -20,7 +20,7 @@
 
 using namespace DirectX;
 
-Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder)
+Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder, StreamingPolicy& streamingPolicy)
 	: mDevice(deviceBundle.Device)
 	, mDeviceContext(deviceBundle.DeviceContext)
 	, mSwapChain(deviceBundle.SwapChain)
@@ -40,6 +40,7 @@ Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceS
 	, mGPUResourceService(gpuResourceService)
 	, mTextureManager(textureManager)
 	, mMeshBuilder(meshBuilder)
+	, mStreamingPolicy(streamingPolicy)
 	, mSkyBox(gpuResourceService, textureManager)
 {
 	assert(mDevice != nullptr && mDeviceContext != nullptr && mSwapChain != nullptr);
@@ -104,7 +105,6 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
 		//++drawCallCount;
 	}
-
 
 	mSkyBox.BeginFrame(mDeviceContext.Get(), camera);
 	mSkyBox.Draw(mDeviceContext.Get());
@@ -348,6 +348,8 @@ void Renderer::ScheduleDirtyChunkMesh(const ChunkMeshBuildJob& job)
 	mDirtyChunkKeys.insert(job);
 }
 
+
+// 이거 분리하는 게 맞다. Renderer에서 스케줄링, MapManager에서 청크 상태 관리, JobScheduler에서 실제 생성 담당
 void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos, MapManager& mapManager)
 {
 	uint32_t i = 0;
@@ -371,7 +373,7 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 	mDirtyChunkKeys.erase(job);
 
 	ChunkKey key = ChunkMath::ToChunkKey(job.TargetChunkPosition);
-	if (StreamingPolicy::ShouldKeep(job.TargetChunkPosition, cameraChunkPos) == false || mapManager.HasChunk(key) == false)
+	if (mStreamingPolicy.ShouldKeep(job.TargetChunkPosition, cameraChunkPos) == false || mapManager.HasChunk(key) == false)
 	{
 		return false;
 	}
@@ -452,4 +454,6 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 	mapManager.ClearDirty(key);
 	return true;
 }
+
+
 
