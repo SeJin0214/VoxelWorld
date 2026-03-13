@@ -419,4 +419,5 @@ FodyWeavers.xsd
 
 # Third-party libraries
 third_party/imgui/
+third_party/directxtk/
 *.ini
