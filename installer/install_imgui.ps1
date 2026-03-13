@@ -43,7 +43,10 @@ $coreFiles = @( # 골뱅이는 배열 만드는 것
     "imgui_tables.cpp",
     "imgui_widgets.cpp",
     "imgui_demo.cpp",
-    "imconfig.h"
+    "imconfig.h",
+    "imstb_rectpack.h",
+    "imstb_textedit.h",
+    "imstb_truetype.h"
 )
 
 foreach ($file in $coreFiles) {
