@@ -18,6 +18,7 @@
 #include "ChunkMath.h"
 #include "StreamingPolicy.h"
 
+
 using namespace DirectX;
 
 Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder, StreamingPolicy& streamingPolicy)
@@ -131,8 +132,6 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 	//}
 	
 	//LogPipelineState(stats, drawCallCount, deltaTime);
-
-	Present();
 }
 
 void Renderer::Present()

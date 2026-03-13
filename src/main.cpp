@@ -8,6 +8,7 @@
 #pragma comment(linker, "/entry:WinMainCRTStartup")
 #include <iostream>
 
+
 #include <windows.h>
 #include <cassert>
 #include <string>
@@ -25,9 +26,21 @@
 #include "StreamingPolicy.h"
 #include "AdaptiveRenderDistanceController.h"
 
+#include "imgui.h"
+#include "imgui_impl_win32.h"
+#include "imgui_impl_dx11.h"
+
+extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
+	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 
 LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
+	if (ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam))
+	{
+		return true;
+	}
+
 	switch (message)
 	{
 	case WM_INPUT:
@@ -69,17 +82,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	ScreenManager::GetInstance().CreateHWND(windowClass, title, hInstance);
 	HWND hWnd = ScreenManager::GetInstance().GetHWND();
 
-	BlockMaterialTable blockMaterialTable = BlockLoader::Load(WorldConfig::ATLAS_JSON_PATH);
-	MeshBuilder meshBuilder(blockMaterialTable);
-
-	DeviceFactory::DeviceBundle deviceBundle = DeviceFactory::CreateDeviceAndSwapChain(hWnd);
-	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
-	TextureManager textureManager(gpuResourceService);
-
 	RuntimeConfig runtimeConfig;
 	StreamingPolicy streamingPolicy(runtimeConfig);
 	AdaptiveRenderDistanceController adaptiveRenderDistanceController(runtimeConfig);
 
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui::StyleColorsDark();
+
+	DeviceFactory::DeviceBundle deviceBundle = DeviceFactory::CreateDeviceAndSwapChain(hWnd);
+
+	ImGui_ImplWin32_Init(hWnd);
+	ImGui_ImplDX11_Init(deviceBundle.Device.Get(), deviceBundle.DeviceContext.Get());
+
+	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
+	TextureManager textureManager(gpuResourceService);
+
+	BlockMaterialTable blockMaterialTable = BlockLoader::Load(WorldConfig::ATLAS_JSON_PATH);
+	MeshBuilder meshBuilder(blockMaterialTable);
 	// MeshBuilder에게 BlockMaterialTable 주입하고, MeshBuilder를 Renderer에게 주입하기
 	Renderer renderer(deviceBundle, gpuResourceService, textureManager, meshBuilder, streamingPolicy);
 	renderer.Create();
@@ -99,19 +119,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	{
 		++frameNumber;
 		timer.Tick();
-
-		//std::wstring title = L"VoxelEngine | FPS: " + std::to_wstring(static_cast<int>(timer.GetFPS()));
-
-		// 25ms 40FPS 
-		//if (timer.GetFPS() <= 40)
-		//{
-		//	std::cout << "FPS dropped to " << timer.GetFPS() << "!, frameNumber: " << frameNumber << std::endl;
-		//}
-		//std::cout << " FPS:" << timer.GetFPS() << std::endl;
-
 		timer.UpdateFPSStats();
-
-		//SetWindowText(hWnd, title.c_str());
 
 		MSG msg;
 		// 처리할 메시지가 더 이상 없을때 까지 수행
@@ -142,12 +150,37 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		
 		mapManager.Update(camera, renderer);
 
+
+		ImGui_ImplDX11_NewFrame();
+		ImGui_ImplWin32_NewFrame();
+		ImGui::NewFrame();
+
+		ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
+		ImGui::SetNextWindowBgAlpha(0.35f);
+
+		ImGui::Begin("Performance", nullptr,
+			ImGuiWindowFlags_NoResize |
+			ImGuiWindowFlags_AlwaysAutoResize);
+
+		ImGui::Text("FPS: %d", timer.GetFPS());
+		ImGui::Text("Frame Time: %.2f ms", timer.GetDeltaTime() * 1000.0f);
+
+		ImGui::End();
+
 		renderer.Update(camera, deltaTime, mapManager);
+
+		ImGui::Render();
+		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+		renderer.Present();
+
 		timer.RenderFPSLog();
 	}
 
 	renderer.Release();
 
+	ImGui_ImplDX11_Shutdown();
+	ImGui_ImplWin32_Shutdown();
+	ImGui::DestroyContext();
 
 	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
 	//_CrtDumpMemoryLeaks();

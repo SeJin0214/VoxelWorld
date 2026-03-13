@@ -16,6 +16,9 @@
     <Filter Include="Shaders">
       <UniqueIdentifier>{585c5148-967a-4d5f-a09d-d20fe6aa6406}</UniqueIdentifier>
     </Filter>
+    <Filter Include="소스 파일\Imgui">
+      <UniqueIdentifier>{a6bd8d43-3915-46c6-83c2-f13060767e21}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.cpp">
@@ -77,6 +80,27 @@
     </ClCompile>
     <ClCompile Include="AdaptiveRenderDistanceController.cpp">
       <Filter>소스 파일</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\imgui\imgui.cpp">
+      <Filter>소스 파일\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\imgui\imgui_demo.cpp">
+      <Filter>소스 파일\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\imgui\imgui_draw.cpp">
+      <Filter>소스 파일\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\imgui\imgui_impl_dx11.cpp">
+      <Filter>소스 파일\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\imgui\imgui_impl_win32.cpp">
+      <Filter>소스 파일\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\imgui\imgui_tables.cpp">
+      <Filter>소스 파일\Imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\third_party\imgui\imgui_widgets.cpp">
+      <Filter>소스 파일\Imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
