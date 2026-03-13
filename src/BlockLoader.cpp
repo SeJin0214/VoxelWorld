@@ -2,8 +2,9 @@
 #include "BlockMaterialTable.h"
 #include "BlockMaterial.h"
 
-BlockMaterialTable BlockLoader::Load(const char* path)
+BlockMaterialTable BlockLoader::Load(const std::filesystem::path& path)
 {
+	(void)path;
 	// 나중에 JSON 로더로 변경하기
 	BlockMaterialTable result;
 
@@ -19,3 +20,4 @@ BlockMaterialTable BlockLoader::Load(const char* path)
 
 	return result;
 }
+

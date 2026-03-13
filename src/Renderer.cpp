@@ -13,6 +13,7 @@
 #include <vector>
 #include <limits>
 #include "Logger.h"
+#include "PathUtils.h"
 #include "Timer.h"
 #include "ScopedProfiler.h"
 #include "ChunkMath.h"
@@ -32,9 +33,9 @@ Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceS
 	, mDepthView(gpuResourceService.CreateDepthStencilView(mDepthBuffer.Get()))
 	, mDepthState(gpuResourceService.CreateDepthStencilState())
 	, mRaterizerState(gpuResourceService.CreateRaterizerState())
-	, mVertexShader(gpuResourceService.CreateVertexShader(gpuResourceService.CompileVertexShader(L"shaders/Shader.hlsl").Get()))
-	, mPixelShader(gpuResourceService.CreatePixelShader(gpuResourceService.CompilePixelShader(L"shaders/Shader.hlsl").Get()))
-	, mInputLayout(gpuResourceService.CreateInputLayout(gpuResourceService.CompileVertexShader(L"shaders/Shader.hlsl").Get()))
+	, mVertexShader(gpuResourceService.CreateVertexShader(gpuResourceService.CompileVertexShader(PathUtils::GetShaderPath("Shader.hlsl")).Get()))
+	, mPixelShader(gpuResourceService.CreatePixelShader(gpuResourceService.CompilePixelShader(PathUtils::GetShaderPath("Shader.hlsl")).Get()))
+	, mInputLayout(gpuResourceService.CreateInputLayout(gpuResourceService.CompileVertexShader(PathUtils::GetShaderPath("Shader.hlsl")).Get()))
 	, mConstantBuffer(gpuResourceService.CreateDynamicConstantBuffer(sizeof(WVPMatrix)))
 	, mSamplerState(gpuResourceService.CreateSamplerState())
 	, mPipelineQuery(gpuResourceService.CreatePipelineStatisticsQuery())
@@ -453,6 +454,8 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 	mapManager.ClearDirty(key);
 	return true;
 }
+
+
 
 
 

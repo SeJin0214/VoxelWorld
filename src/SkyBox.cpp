@@ -1,12 +1,18 @@
-ï»¿#include "SkyBox.h"
+#include "SkyBox.h"
 #include "GPUResourceService.h"
 #include "TextureManager.h"
+#include "PathUtils.h"
 #include "WVPMatrix.h"
 #include "DirectXMath.h"
 #include "IVector3.h"
 #include "WorldConfig.h"
 
 using namespace DirectX;
+
+std::filesystem::path SkyBox::GetShaderFilePath()
+{
+	return PathUtils::GetShaderPath("SkyBox.hlsl");
+}
 
 SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureManager)
 	: mGPUResourceService(gpuResourceService)
@@ -21,8 +27,8 @@ SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureMa
 	, mPixelShader(gpuResourceService.CreatePixelShader(gpuResourceService.CompilePixelShader(GetShaderFilePath()).Get()))
 	, mInputLayout(gpuResourceService.CreateInputLayoutForSkyBox(gpuResourceService.CompileVertexShader(GetShaderFilePath()).Get()))
 {
-	// RasterizerStateì—ì„œ CullModeë¥¼ Frontë¡œ ì„¤ì •í•´ì•¼ í•˜ëŠ” ë°ì´í„°
-	// íë¸Œ ë²„í…ìŠ¤ ë°ì´í„° (ì •ì  8ê°œ)
+	// RasterizerState¿¡¼­ CullMode¸¦ Front·Î ¼³Á¤ÇØ¾ß ÇÏ´Â µ¥ÀÌÅÍ
+	// Å¥ºê ¹öÅØ½º µ¥ÀÌÅÍ (Á¤Á¡ 8°³)
 	Vector3 vertices[SKYBOX_VERTEX_COUNT] =
 	{
 		{ -1.0f,  1.0f, -1.0f }, // 0  * 
@@ -36,7 +42,7 @@ SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureMa
 	};
 	gpuResourceService.UpdateStaticBuffer(mVertexBuffer.Get(), vertices);
 
-	// íë¸Œ ì¸ë±ìŠ¤ ë°ì´í„° (12 ì‚¼ê°í˜•, 36 ì¸ë±ìŠ¤)
+	// Å¥ºê ÀÎµ¦½º µ¥ÀÌÅÍ (12 »ï°¢Çü, 36 ÀÎµ¦½º)
 	uint32_t indices[SKYBOX_INDEX_COUNT] =
 	{
 		0, 1, 2, 0, 2, 3, // back face
@@ -50,12 +56,12 @@ SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureMa
 
 }
 
-// ë¦¬ì†ŒìŠ¤ ì œê³µìœ¼ë¡œ ë³€ê²½í•˜ê¸°
+// ¸®¼Ò½º Á¦°øÀ¸·Î º¯°æÇÏ±â
 void SkyBox::BeginFrame(ID3D11DeviceContext* context, const Camera& camera)
 {
 	WVPMatrix wvpMatrix;
-	// í–‰ë ¬ ê³„ì‚°í•˜ê¸°, ì›”ë“œëŠ” Scale, Trë§Œ
-	// FarZ ê³ ë ¤í•´ì„œ í•˜ê¸°
+	// Çà·Ä °è»êÇÏ±â, ¿ùµå´Â Scale, Tr¸¸
+	// FarZ °í·ÁÇØ¼­ ÇÏ±â
 	const float farZ = WorldConfig::FAR_Z * 0.9f;
 	XMMATRIX world = XMMatrixScaling(farZ, farZ, farZ);
 	XMMATRIX view = camera.GetSkyboxViewMatrix();
@@ -64,7 +70,7 @@ void SkyBox::BeginFrame(ID3D11DeviceContext* context, const Camera& camera)
 	mGPUResourceService.UpdateDynamicBuffer(mConstantBuffer.Get(), &wvpMatrix, sizeof(wvpMatrix));
 
 
-	// ë‚˜ì¤‘ì— ë Œë”ëŸ¬ë¡œ ë¹¼ëŠ” ê²Œ ì¢‹ì„ ë“¯
+	// ³ªÁß¿¡ ·»´õ·¯·Î »©´Â °Ô ÁÁÀ» µí
 	const UINT stride = sizeof(Vector3);
 	const UINT offset = 0;
 	context->IASetVertexBuffers(0, 1, mVertexBuffer.GetAddressOf(), &stride, &offset);
@@ -88,4 +94,6 @@ void SkyBox::Draw(ID3D11DeviceContext* context)
 {
 	context->DrawIndexed(SKYBOX_INDEX_COUNT, 0, 0);
 }
+
+
 

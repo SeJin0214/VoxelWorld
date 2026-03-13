@@ -1,4 +1,4 @@
-Ôªø#include <cassert>
+#include <cassert>
 #include <cstdio>
 #include <cstring>
 #include <algorithm>
@@ -94,7 +94,7 @@ ComPtr<ID3D11DepthStencilState> GPUResourceService::CreateDepthStencilStateForSk
 {
 	D3D11_DEPTH_STENCIL_DESC dsDesc{};
 	dsDesc.DepthEnable = TRUE;
-	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // depth bufferÏóê Ïì∞Í∏∞Î•º ÌïòÏßÄ ÏïäÏùå
+	dsDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO; // depth bufferø° æ≤±‚∏¶ «œ¡ˆ æ ¿Ω
 	dsDesc.DepthFunc = D3D11_COMPARISON_LESS_EQUAL;
 
 	ComPtr<ID3D11DepthStencilState> depthState;
@@ -129,20 +129,20 @@ ComPtr<ID3D11RasterizerState> GPUResourceService::CreateRaterizerStateForSkyBox(
 	return rasterizerState;
 }
 
-ComPtr<ID3DBlob> GPUResourceService::CompileVertexShader(LPCWSTR vertexPath)
+ComPtr<ID3DBlob> GPUResourceService::CompileVertexShader(const std::filesystem::path& vertexPath)
 {
-	assert(vertexPath != nullptr);
+	assert(vertexPath.empty() == false);
 	ComPtr<ID3DBlob> vertexBlob;
-	HRESULT hr = D3DCompileFromFile(vertexPath, nullptr, nullptr, "mainVS", "vs_5_0", 0, 0, vertexBlob.GetAddressOf(), nullptr);
+	HRESULT hr = D3DCompileFromFile(vertexPath.c_str(), nullptr, nullptr, "mainVS", "vs_5_0", 0, 0, vertexBlob.GetAddressOf(), nullptr);
 	assert(SUCCEEDED(hr) && vertexBlob != nullptr);
 	return vertexBlob;
 }
 
-ComPtr<ID3DBlob> GPUResourceService::CompilePixelShader(LPCWSTR pixelPath)
+ComPtr<ID3DBlob> GPUResourceService::CompilePixelShader(const std::filesystem::path& pixelPath)
 {
-	assert(pixelPath != nullptr);
+	assert(pixelPath.empty() == false);
 	ComPtr<ID3DBlob> pixelBlob;
-	HRESULT hr = D3DCompileFromFile(pixelPath, nullptr, nullptr, "mainPS", "ps_5_0", 0, 0, pixelBlob.GetAddressOf(), nullptr);
+	HRESULT hr = D3DCompileFromFile(pixelPath.c_str(), nullptr, nullptr, "mainPS", "ps_5_0", 0, 0, pixelBlob.GetAddressOf(), nullptr);
 	assert(SUCCEEDED(hr) && pixelBlob != nullptr);
 	return pixelBlob;
 }
@@ -193,21 +193,21 @@ ComPtr<ID3D11InputLayout> GPUResourceService::CreateInputLayoutForSkyBox(ID3DBlo
 	return inputLayout;
 }
 
-ComPtr<ID3D11ShaderResourceView> GPUResourceService::CreateTextureAndSRV(LPCWSTR texturePath)
+ComPtr<ID3D11ShaderResourceView> GPUResourceService::CreateTextureAndSRV(const std::filesystem::path& texturePath)
 {
-	assert(texturePath != nullptr);
+	assert(texturePath.empty() == false);
 	ComPtr<ID3D11ShaderResourceView> srv;
-	HRESULT hr = DirectX::CreateWICTextureFromFile(mDevice.Get(), mDeviceContext.Get(), texturePath, nullptr, srv.GetAddressOf());
+	HRESULT hr = DirectX::CreateWICTextureFromFile(mDevice.Get(), mDeviceContext.Get(), texturePath.c_str(), nullptr, srv.GetAddressOf());
 	assert(SUCCEEDED(hr) && srv != nullptr);
 	return srv;
 }
 
-ComPtr<ID3D11ShaderResourceView> GPUResourceService::CreateTextureAndSRVForSkyBox(LPCWSTR texturePath)
+ComPtr<ID3D11ShaderResourceView> GPUResourceService::CreateTextureAndSRVForSkyBox(const std::filesystem::path& texturePath)
 {
-	assert(texturePath != nullptr);
+	assert(texturePath.empty() == false);
 	ComPtr<ID3D11ShaderResourceView> srv;
-	// CreateDDSTextureFromFile ÏÇ¨Ïö©ÌïòÍ∏∞
-	HRESULT hr = DirectX::CreateDDSTextureFromFile(mDevice.Get(), mDeviceContext.Get(), texturePath, nullptr, srv.GetAddressOf());
+	// CreateDDSTextureFromFile ªÁøÎ«œ±‚
+	HRESULT hr = DirectX::CreateDDSTextureFromFile(mDevice.Get(), mDeviceContext.Get(), texturePath.c_str(), nullptr, srv.GetAddressOf());
 	assert(SUCCEEDED(hr) && srv != nullptr);
 	return srv;
 }
@@ -459,6 +459,8 @@ void GPUResourceService::UpdateStaticBuffer(ID3D11Buffer* buffer, const void* da
 	assert(buffer != nullptr && dataPtr != nullptr);
 	mDeviceContext->UpdateSubresource(buffer, 0, nullptr, dataPtr, 0, 0);
 }
+
+
 
 
 

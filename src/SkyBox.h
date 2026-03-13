@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <cassert>
@@ -18,7 +19,7 @@ public:
 	SkyBox(const SkyBox& other) = delete;
 	SkyBox& operator=(const SkyBox& rhs) = delete;
 
-	LPCWSTR GetShaderFilePath() const { return L"shaders/SkyBox.hlsl"; }
+	static std::filesystem::path GetShaderFilePath();
 
 	void BeginFrame(ID3D11DeviceContext* context, const Camera& camera);
 	void Draw(ID3D11DeviceContext* context);
@@ -42,3 +43,5 @@ private:
 	ComPtr<ID3D11PixelShader> mPixelShader;
 	ComPtr<ID3D11InputLayout> mInputLayout;
 };
+
+

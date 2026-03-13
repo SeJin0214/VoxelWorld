@@ -22,6 +22,7 @@
 #include "ScopedProfiler.h"
 #include "TextureManager.h"
 #include "BlockMaterialTable.h"
+#include "PathUtils.h"
 #include "RuntimeConfig.h"
 #include "StreamingPolicy.h"
 #include "AdaptiveRenderDistanceController.h"
@@ -98,7 +99,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
 	TextureManager textureManager(gpuResourceService);
 
-	BlockMaterialTable blockMaterialTable = BlockLoader::Load(WorldConfig::ATLAS_JSON_PATH);
+	BlockMaterialTable blockMaterialTable = BlockLoader::Load(PathUtils::GetAssetPath("Atlas.json"));
 	MeshBuilder meshBuilder(blockMaterialTable);
 	// MeshBuilder에게 BlockMaterialTable 주입하고, MeshBuilder를 Renderer에게 주입하기
 	Renderer renderer(deviceBundle, gpuResourceService, textureManager, meshBuilder, streamingPolicy);
@@ -188,6 +189,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	return 0;
 }
+
+
 
 
 

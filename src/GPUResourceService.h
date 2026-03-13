@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <d3d11.h>
 #include <d3dcompiler.h>
 #include <wrl/client.h>
@@ -28,15 +29,15 @@ public:
 	ComPtr<ID3D11SamplerState> CreateSamplerState();
 	ComPtr<ID3D11SamplerState> CreateSamplerStateForSkyBox();
 
-	ComPtr<ID3DBlob> CompileVertexShader(LPCWSTR vertexPath);
-	ComPtr<ID3DBlob> CompilePixelShader(LPCWSTR pixelPath);
+	ComPtr<ID3DBlob> CompileVertexShader(const std::filesystem::path& vertexPath);
+	ComPtr<ID3DBlob> CompilePixelShader(const std::filesystem::path& pixelPath);
 	ComPtr<ID3D11VertexShader> CreateVertexShader(ID3DBlob* vertexBlob);
 	ComPtr<ID3D11PixelShader> CreatePixelShader(ID3DBlob* pixelBlob);
 	ComPtr<ID3D11InputLayout> CreateInputLayout(ID3DBlob* vertexBlob);
 	ComPtr<ID3D11InputLayout> CreateInputLayoutForSkyBox(ID3DBlob* vertexBlob);
 
-	ComPtr<ID3D11ShaderResourceView> CreateTextureAndSRV(LPCWSTR texturePath);
-	ComPtr<ID3D11ShaderResourceView> CreateTextureAndSRVForSkyBox(LPCWSTR texturePath);
+	ComPtr<ID3D11ShaderResourceView> CreateTextureAndSRV(const std::filesystem::path& texturePath);
+	ComPtr<ID3D11ShaderResourceView> CreateTextureAndSRVForSkyBox(const std::filesystem::path& texturePath);
 
 	ComPtr<ID3D11Query> CreatePipelineStatisticsQuery();
 	void LogPipelineState(D3D11_QUERY_DATA_PIPELINE_STATISTICS& stats, const size_t drawCallCount, const float deltaTIme);
@@ -60,3 +61,5 @@ private:
 	ComPtr<ID3D11Device> mDevice;
 	ComPtr<ID3D11DeviceContext> mDeviceContext;
 };
+
+
