@@ -10,20 +10,26 @@ Write-Host "projectRoot = ${projectRoot}"
 Write-Host "tempPath    = ${tempPath}"
 Write-Host "destPath    = ${destPath}"
 
-if (!(Test-Path $tempPath))
+if (Test-Path $tempPath)
 {
-    New-Item -ItemType Directory -Path $tempPath -Force | Out-Null
+    Remove-Item $tempPath -Recurse -Force
 }
 
-if (!(Test-Path $destPath))
+if (Test-Path $destPath)
 {
-    New-Item -ItemType Directory -Path $destPath -Force | Out-Null
+    Remove-Item $destPath -Recurse -Force
 }
 
 git clone $repoUrl $tempPath
 
+New-Item -ItemType Directory -Path $destPath -Force | Out-Null
 Copy-Item (Join-Path $tempPath "*") $destPath -Recurse -Force
 
 Remove-Item $tempPath -Recurse -Force
 
-Write-Host "DirextXTK installed at ${destPath}"
+$outPath = (Join-Path $destPath out)
+cmake -S $destPath -B $outPath -A x64
+cmake --build $outPath --config Debug
+cmake --build $outPath --config Release
+
+Write-Host "DirectXTK installed at ${destPath}"

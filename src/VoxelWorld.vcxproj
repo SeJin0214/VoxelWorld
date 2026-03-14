@@ -112,7 +112,7 @@
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\third_party\imgui;$(ProjectDir)..\third_party\directxtk\Inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\third_party\imgui;$(SolutionDir)\includes;$(ProjectDir)..\third_party\directxtk\Inc</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -129,7 +129,7 @@
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <LanguageStandard>stdcpp20</LanguageStandard>
-      <AdditionalIncludeDirectories>$(ProjectDir)..\third_party\imgui;$(ProjectDir)..\third_party\directxtk\Inc</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)..\third_party\imgui;$(SolutionDir)\includes;$(ProjectDir)..\third_party\directxtk\Inc</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -168,42 +168,6 @@
     <ClCompile Include="Timer.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AdaptiveRenderDistanceController.h" />
-    <ClInclude Include="BiomePolicy.h" />
-    <ClInclude Include="BlockLoader.h" />
-    <ClInclude Include="BlockMaterial.h" />
-    <ClInclude Include="BlockMaterialTable.h" />
-    <ClInclude Include="BlockMeshData.h" />
-    <ClInclude Include="BlockTextureType.h" />
-    <ClInclude Include="BlockType.h" />
-    <ClInclude Include="BufferPool.h" />
-    <ClInclude Include="Camera.h" />
-    <ClInclude Include="Chunk.h" />
-    <ClInclude Include="ChunkMath.h" />
-    <ClInclude Include="ChunkInfo.h" />
-    <ClInclude Include="DeviceFactory.h" />
-    <ClInclude Include="GPUResourceService.h" />
-    <ClInclude Include="MeshBuilder.h" />
-    <ClInclude Include="MeshData.h" />
-    <ClInclude Include="RuntimeConfig.h" />
-    <ClInclude Include="ScopedProfiler.h" />
-    <ClInclude Include="SkyBox.h" />
-    <ClInclude Include="StreamingPolicy.h" />
-    <ClInclude Include="TextureManager.h" />
-    <ClInclude Include="Types.h" />
-    <ClInclude Include="InputManager.h" />
-    <ClInclude Include="IVector3.h" />
-    <ClInclude Include="MapManager.h" />
-    <ClInclude Include="PathUtils.h" />
-    <ClInclude Include="Renderer.h" />
-    <ClInclude Include="BlockVertex.h" />
-    <ClInclude Include="ScreenManager.h" />
-    <ClInclude Include="Logger.h" />
-    <ClInclude Include="Timer.h" />
-    <ClInclude Include="WorldConfig.h" />
-    <ClInclude Include="WVPMatrix.h" />
-  </ItemGroup>
-  <ItemGroup>
     <FxCompile Include="..\shaders\Shader.hlsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
@@ -220,7 +184,44 @@
       <Project>{e0b52ae7-e160-4d32-bf3f-910b785e5a8e}</Project>
     </ProjectReference>
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\includes\AdaptiveRenderDistanceController.h" />
+    <ClInclude Include="..\includes\BiomePolicy.h" />
+    <ClInclude Include="..\includes\BlockLoader.h" />
+    <ClInclude Include="..\includes\BlockMaterial.h" />
+    <ClInclude Include="..\includes\BlockMaterialTable.h" />
+    <ClInclude Include="..\includes\BlockMeshData.h" />
+    <ClInclude Include="..\includes\BlockTextureType.h" />
+    <ClInclude Include="..\includes\BlockType.h" />
+    <ClInclude Include="..\includes\BlockVertex.h" />
+    <ClInclude Include="..\includes\BufferPool.h" />
+    <ClInclude Include="..\includes\Camera.h" />
+    <ClInclude Include="..\includes\Chunk.h" />
+    <ClInclude Include="..\includes\ChunkInfo.h" />
+    <ClInclude Include="..\includes\ChunkMath.h" />
+    <ClInclude Include="..\includes\ChunkMesh.h" />
+    <ClInclude Include="..\includes\DeviceFactory.h" />
+    <ClInclude Include="..\includes\FastNoiseLite.h" />
+    <ClInclude Include="..\includes\GPUResourceService.h" />
+    <ClInclude Include="..\includes\InputManager.h" />
+    <ClInclude Include="..\includes\IVector3.h" />
+    <ClInclude Include="..\includes\Logger.h" />
+    <ClInclude Include="..\includes\MapManager.h" />
+    <ClInclude Include="..\includes\MeshBuilder.h" />
+    <ClInclude Include="..\includes\MeshData.h" />
+    <ClInclude Include="..\includes\PathUtils.h" />
+    <ClInclude Include="..\includes\Renderer.h" />
+    <ClInclude Include="..\includes\RuntimeConfig.h" />
+    <ClInclude Include="..\includes\ScopedProfiler.h" />
+    <ClInclude Include="..\includes\ScreenManager.h" />
+    <ClInclude Include="..\includes\SkyBox.h" />
+    <ClInclude Include="..\includes\StreamingPolicy.h" />
+    <ClInclude Include="..\includes\TextureManager.h" />
+    <ClInclude Include="..\includes\Timer.h" />
+    <ClInclude Include="..\includes\Types.h" />
+    <ClInclude Include="..\includes\WorldConfig.h" />
+    <ClInclude Include="..\includes\WVPMatrix.h" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
 </Project>
-
