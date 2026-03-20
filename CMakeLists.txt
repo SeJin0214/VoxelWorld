@@ -36,7 +36,8 @@ set(SRCS
 	${SRC_DIR}/SkyBox.cpp
 	${SRC_DIR}/TextureManager.cpp
 	${SRC_DIR}/Timer.cpp
-)
+ 	${SRC_DIR}/ImGuiLayer.cpp 
+	${SRC_DIR}/DebugUI.cpp)
 
 set(IMGUI_SRCS
 	${IMGUI_DIR}/imgui.cpp

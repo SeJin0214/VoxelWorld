@@ -22,7 +22,7 @@
 
 using namespace DirectX;
 
-Renderer::Renderer(const DeviceFactory::DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder, StreamingPolicy& streamingPolicy)
+Renderer::Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder, StreamingPolicy& streamingPolicy)
 	: mDevice(deviceBundle.Device)
 	, mDeviceContext(deviceBundle.DeviceContext)
 	, mSwapChain(deviceBundle.SwapChain)

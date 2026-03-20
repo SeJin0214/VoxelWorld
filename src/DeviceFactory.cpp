@@ -3,7 +3,7 @@
 #include "DeviceFactory.h"
 #include "ScreenManager.h"
 
-DeviceFactory::DeviceBundle DeviceFactory::CreateDeviceAndSwapChain(HWND hWnd)
+DeviceBundle DeviceFactory::CreateDeviceAndSwapChain(HWND hWnd)
 {
 	DeviceBundle bundle{};
 

@@ -9,6 +9,5 @@ RuntimeConfig::RuntimeConfig()
 
 void RuntimeConfig::SetRenderDistance(const int32_t renderDistance, const char* callerName)
 {
-	Logger::LogLine("%s: ·»´õ °Å¸® %d -> %d", callerName, mRenderDistance, renderDistance);
 	mRenderDistance = renderDistance; 
 }

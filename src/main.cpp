@@ -7,8 +7,6 @@
 #pragma comment(linker, "/subsystem:console")
 #pragma comment(linker, "/entry:WinMainCRTStartup")
 #include <iostream>
-
-
 #include <windows.h>
 #include <cassert>
 #include <string>
@@ -26,10 +24,8 @@
 #include "RuntimeConfig.h"
 #include "StreamingPolicy.h"
 #include "AdaptiveRenderDistanceController.h"
-
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx11.h"
+#include "ImGuiLayer.h"
+#include "DebugUI.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -71,7 +67,6 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-
 	// Engine.cpp
 
 	WCHAR windowClass[] = L"Voxel World";
@@ -87,14 +82,11 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	StreamingPolicy streamingPolicy(runtimeConfig);
 	AdaptiveRenderDistanceController adaptiveRenderDistanceController(runtimeConfig);
 
-	IMGUI_CHECKVERSION();
-	ImGui::CreateContext();
-	ImGui::StyleColorsDark();
+	DeviceBundle deviceBundle = DeviceFactory::CreateDeviceAndSwapChain(hWnd);
+	ImGuiLayerDesc layerDesc{ hWnd, deviceBundle.Device.Get(), deviceBundle.DeviceContext.Get() };
+	ImGuiLayer imGuiLayer(layerDesc);
 
-	DeviceFactory::DeviceBundle deviceBundle = DeviceFactory::CreateDeviceAndSwapChain(hWnd);
-
-	ImGui_ImplWin32_Init(hWnd);
-	ImGui_ImplDX11_Init(deviceBundle.Device.Get(), deviceBundle.DeviceContext.Get());
+	DebugUI debugUI;
 
 	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
 	TextureManager textureManager(gpuResourceService);
@@ -151,27 +143,14 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		
 		mapManager.Update(camera, renderer);
 
-
-		ImGui_ImplDX11_NewFrame();
-		ImGui_ImplWin32_NewFrame();
-		ImGui::NewFrame();
-
-		ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
-		ImGui::SetNextWindowBgAlpha(0.35f);
-
-		ImGui::Begin("Performance", nullptr,
-			ImGuiWindowFlags_NoResize |
-			ImGuiWindowFlags_AlwaysAutoResize);
-
-		ImGui::Text("FPS: %d", timer.GetFPS());
-		ImGui::Text("Frame Time: %.2f ms", timer.GetDeltaTime() * 1000.0f);
-
-		ImGui::End();
+		imGuiLayer.BeginFrame();
 
 		renderer.Update(camera, deltaTime, mapManager);
 
-		ImGui::Render();
-		ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+		DebugUiContext uiContext{ timer };
+		debugUI.Draw(uiContext);
+
+		imGuiLayer.Render();
 
 		renderer.Present();
 
@@ -179,10 +158,6 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 
 	renderer.Release();
-
-	ImGui_ImplDX11_Shutdown();
-	ImGui_ImplWin32_Shutdown();
-	ImGui::DestroyContext();
 
 	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
 	//_CrtDumpMemoryLeaks();
