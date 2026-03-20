@@ -6,6 +6,7 @@
 // 콘솔 출력 
 #pragma comment(linker, "/subsystem:console")
 #pragma comment(linker, "/entry:WinMainCRTStartup")
+
 #include <iostream>
 #include <windows.h>
 #include <cassert>

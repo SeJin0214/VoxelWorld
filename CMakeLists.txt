@@ -14,6 +14,9 @@ set(IMGUI_DIR third_party/imgui)
 set(IMGUI_INC_DIR third_party/imgui)
 set(XTK_DIR third_party/directxtk)
 
+set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>")
+
+
 set(SRCS
 	${SRC_DIR}/AdaptiveRenderDistanceController.cpp
 	${SRC_DIR}/BiomePolicy.cpp
@@ -49,7 +52,7 @@ set(IMGUI_SRCS
 	${IMGUI_DIR}/imgui_widgets.cpp
 )
 
-add_executable(${PROJECT_NAME} ${SRCS} ${IMGUI_SRCS})
+add_executable(${PROJECT_NAME} WIN32 ${SRCS} ${IMGUI_SRCS})
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	${INC_DIR}
 	${IMGUI_INC_DIR}
@@ -59,8 +62,18 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_directories(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Debug>
     $<$<CONFIG:Release>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Release>
+    $<$<CONFIG:RelWithDebInfo>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Release>
+
+)
+
+target_link_options(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:RelWithDebInfo>:/DEBUG>
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-	DirectXTK
+    DirectXTK
+    d3d11
+    d3dcompiler
+    dxgi
+    user32
 )

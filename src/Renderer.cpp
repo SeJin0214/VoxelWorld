@@ -358,12 +358,12 @@ void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVecto
 	while (i < maxCreateCountPerFrame && j < MAX_LOOP && !mDirtyChunkMeshQueue.empty())
 	{
 		ChunkMeshBuildJob& job = mDirtyChunkMeshQueue.front();
-		mDirtyChunkMeshQueue.pop();
 		if (TryCreateMesh(job, cameraChunkPos, mapManager))
 		{
 			++i;
 		}
 		++j;
+		mDirtyChunkMeshQueue.pop();
 	}
 }
 
