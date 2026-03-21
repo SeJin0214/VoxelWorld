@@ -53,6 +53,8 @@ public:
 
 	void OnDisableChunk(const ChunkKey key);
 
+	uint32_t GetBuiltMeshCount() const { return mChunkMeshes.size(); }
+
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;
 	~Renderer() = default;
@@ -105,7 +107,7 @@ private:
 
 	ComPtr<ID3D11SamplerState> mSamplerState;
 
-	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshs;
+	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshes;
 	ComPtr<ID3D11Buffer> mDebugRayVertexBuffer;
 
 	ComPtr<ID3D11Query> mPipelineQuery;

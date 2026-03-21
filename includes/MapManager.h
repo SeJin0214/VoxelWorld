@@ -19,6 +19,7 @@ public:
 	~MapManager();
 
 	const std::vector<ChunkInfo>& GetUsedChunks() const { return mUsedChunks; }
+	uint32_t GetUsedChunkCount() const { return mUsedChunks.size(); }
 	bool HasChunk(const ChunkKey key) const { return mChunks.contains(key); }
 	const Chunk& GetChunk(const ChunkInfo& chunkInfo) const;
 	const Chunk& GetChunk(const ChunkKey key) const;

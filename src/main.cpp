@@ -27,6 +27,7 @@
 #include "AdaptiveRenderDistanceController.h"
 #include "ImGuiLayer.h"
 #include "DebugUI.h"
+#include "Profiler.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -68,8 +69,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd)
 {
-	// Engine.cpp
-
+	// Engine.
 	WCHAR windowClass[] = L"Voxel World";
 	WCHAR title[] = L"Voxel World";
 
@@ -88,13 +88,13 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	ImGuiLayer imGuiLayer(layerDesc);
 
 	DebugUI debugUI;
+	Profiler profiler;
 
 	GPUResourceService gpuResourceService(deviceBundle.Device, deviceBundle.DeviceContext);
 	TextureManager textureManager(gpuResourceService);
 
 	BlockMaterialTable blockMaterialTable = BlockLoader::Load(PathUtils::GetAssetPath("Atlas.json"));
 	MeshBuilder meshBuilder(blockMaterialTable);
-	// MeshBuilder에게 BlockMaterialTable 주입하고, MeshBuilder를 Renderer에게 주입하기
 	Renderer renderer(deviceBundle, gpuResourceService, textureManager, meshBuilder, streamingPolicy);
 	renderer.Create();
 	renderer.SetupStaticPipelineState();
@@ -108,21 +108,15 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	timer.Reset();
 
 	static uint32_t frameNumber = 0;
-	timer.InitFPSStats();
 	while (true)
 	{
 		++frameNumber;
 		timer.Tick();
-		timer.UpdateFPSStats();
 
 		MSG msg;
-		// 처리할 메시지가 더 이상 없을때 까지 수행
 		while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE))
 		{
-			// 키 입력 메시지를 번역
 			TranslateMessage(&msg);
-
-			// 메시지를 적절한 윈도우 프로시저에 전달, 메시지가 위에서 등록한 WndProc 으로 전달됨
 			DispatchMessage(&msg);
 
 			if (msg.message == WM_QUIT)
@@ -139,42 +133,23 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		float deltaTime = timer.GetDeltaTime();
 		camera.Update(inputManager, deltaTime, mapManager);
 
-		//printf("%f\n", timer.GetMonotonicSeconds());
-		adaptiveRenderDistanceController.Update(deltaTime, timer.GetFPS(), timer.GetMonotonicSeconds());
-		
 		mapManager.Update(camera, renderer);
 
 		imGuiLayer.BeginFrame();
 
 		renderer.Update(camera, deltaTime, mapManager);
 
-		DebugUiContext uiContext{ timer };
-		debugUI.Draw(uiContext);
+		profiler.UpdateFrameMetrics(timer);
+		adaptiveRenderDistanceController.Update(profiler, deltaTime);
+
+		DebugUIContext debugUIContext{ runtimeConfig, mapManager, renderer };
+		debugUI.Draw(profiler, debugUIContext);
 
 		imGuiLayer.Render();
-
 		renderer.Present();
-
-		timer.RenderFPSLog();
 	}
 
 	renderer.Release();
 
-	//_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
-	//_CrtDumpMemoryLeaks();
-
 	return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

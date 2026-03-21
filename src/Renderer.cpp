@@ -98,12 +98,12 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 		}
 
 		ChunkKey key = ChunkMath::ToChunkKey(chunkPosition);
-		if (mChunkMeshs.contains(key) == false)
+		if (mChunkMeshes.contains(key) == false)
 		{
 			continue;
 		}
 
-		ChunkMesh& chunkMesh = mChunkMeshs[key];
+		ChunkMesh& chunkMesh = mChunkMeshes[key];
 		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
 		//++drawCallCount;
 	}
@@ -190,11 +190,11 @@ void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position
 void Renderer::OnDisableChunk(const ChunkKey key)
 {
 	// 청크에 블록이 없는 경우엔 캐시를 갖고 있지 않다.
-	if (mChunkMeshs.contains(key) == false)
+	if (mChunkMeshes.contains(key) == false)
 	{
 		return;
 	}
-	ChunkMesh& mesh = mChunkMeshs[key];
+	ChunkMesh& mesh = mChunkMeshes[key];
 	if (mesh.VertexBuffer.Class != PoolClass::None)
 	{
 		assert(mesh.VertexBuffer.Class != PoolClass::Size);
@@ -205,7 +205,7 @@ void Renderer::OnDisableChunk(const ChunkKey key)
 		assert(mesh.IndexBuffer.Class != PoolClass::Size);
 		mIndexBufferPool.DespawnBuffer(mesh.IndexBuffer);
 	}
-	mChunkMeshs.erase(key);
+	mChunkMeshes.erase(key);
 }
 
 void Renderer::Create()
@@ -379,7 +379,7 @@ bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkP
 	}
 
 	const Chunk& chunk = mapManager.GetChunk(key);
-	ChunkMesh& chunkMesh = mChunkMeshs[key];
+	ChunkMesh& chunkMesh = mChunkMeshes[key];
 
 	bool bUploading = (chunkMesh.PendintVertexState != PoolClass::None && mVertexBufferPool.IsExhaustedPool(chunkMesh.PendintVertexState)
 		|| chunkMesh.PendintIndexState != PoolClass::None && mIndexBufferPool.IsExhaustedPool(chunkMesh.PendintIndexState));

@@ -14,8 +14,8 @@ set(IMGUI_DIR third_party/imgui)
 set(IMGUI_INC_DIR third_party/imgui)
 set(XTK_DIR third_party/directxtk)
 
+# PDB 
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>")
-
 
 set(SRCS
 	${SRC_DIR}/AdaptiveRenderDistanceController.cpp
@@ -40,7 +40,7 @@ set(SRCS
 	${SRC_DIR}/TextureManager.cpp
 	${SRC_DIR}/Timer.cpp
  	${SRC_DIR}/ImGuiLayer.cpp 
-	${SRC_DIR}/DebugUI.cpp)
+	${SRC_DIR}/DebugUI.cpp "src/Profiler.cpp")
 
 set(IMGUI_SRCS
 	${IMGUI_DIR}/imgui.cpp
@@ -61,8 +61,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_directories(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Debug>
-    $<$<CONFIG:Release>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Release>
-    $<$<CONFIG:RelWithDebInfo>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Release>
+    $<$<CONFIG:Release,RelWithDebInfo>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Release>
 
 )
 
@@ -76,4 +75,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     d3dcompiler
     dxgi
     user32
+)
+
+# 전처리기
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:RelWithDebInfo,Debug>:PROFILE>
 )

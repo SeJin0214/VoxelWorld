@@ -4,11 +4,16 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 
-class Timer;
+class Profiler;
+class RuntimeConfig;
+class MapManager;
+class Renderer;
 
-struct DebugUiContext
+struct DebugUIContext
 {
-	Timer& Timer;
+	const RuntimeConfig& RuntimeConfig;
+	const MapManager& MapManager;
+	const Renderer& Renderer;
 };
 
 class DebugUI
@@ -19,5 +24,5 @@ public:
 	DebugUI(const DebugUI& other) = delete;
 	DebugUI& operator=(const DebugUI& rhs) = delete;
 
-	void Draw(DebugUiContext& debugUiContext);
+	void Draw(Profiler& profiler, const DebugUIContext& context);
 };
