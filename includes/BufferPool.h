@@ -10,7 +10,7 @@ using Microsoft::WRL::ComPtr;
 using std::vector;
 
 
-enum class PoolClass : int32_t
+enum class PoolClass : int8_t
 {
 	None = -1,
 	Class0,
@@ -31,10 +31,13 @@ struct SizeClass
 
 struct PooledBuffer
 {
-	PoolClass Class = PoolClass::None;
 	ComPtr<ID3D11Buffer> Buffer;
+	PoolClass Class = PoolClass::None;
 };
 
+// 공용 버퍼풀을 만들고
+// 
+// Size Buffer Pool을 만드는 게 나을지도?
 class BufferPool
 {
 public:

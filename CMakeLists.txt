@@ -40,7 +40,9 @@ set(SRCS
 	${SRC_DIR}/TextureManager.cpp
 	${SRC_DIR}/Timer.cpp
  	${SRC_DIR}/ImGuiLayer.cpp 
-	${SRC_DIR}/DebugUI.cpp "src/Profiler.cpp")
+	${SRC_DIR}/DebugUI.cpp 
+	${SRC_DIR}/Profiler.cpp
+	${SRC_DIR}/JobScheduler.cpp)
 
 set(IMGUI_SRCS
 	${IMGUI_DIR}/imgui.cpp

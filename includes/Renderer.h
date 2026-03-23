@@ -14,9 +14,9 @@
 #include "ChunkInfo.h"
 #include "ChunkMath.h"
 #include "SkyBox.h"
-#include "GPUResourceService.h"
 #include "DeviceFactory.h"
 #include "TextureManager.h"
+#include "MeshData.h"
 
 using std::vector;
 using std::queue;
@@ -24,13 +24,14 @@ using std::unordered_set;
 using Microsoft::WRL::ComPtr;
 
 class MapManager;
-class MeshBuilder;
 class StreamingPolicy;
+class GPUResourceService;
+class JobScheduler;
 
 class Renderer
 {
 public:
-	Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder, StreamingPolicy& streamingPolicy);
+	Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, JobScheduler& jobScheduler, StreamingPolicy& streamingPolicy);
 	void Present();
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 	void Update(const Camera& camera, const float deltaTime, MapManager& mapManager);
@@ -54,6 +55,10 @@ public:
 	void OnDisableChunk(const ChunkKey key);
 
 	uint32_t GetBuiltMeshCount() const { return mChunkMeshes.size(); }
+	uint32_t GetJobs() const { return mPendingUploads.size(); }
+
+	void PushCompletedChunkMesh(MeshData* data) { mCompletedBuildResults.push(data); }
+
 
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;
@@ -61,22 +66,32 @@ public:
 
 private:
 
+	enum class ChunkMeshState : uint8_t
+	{
+		NeedsMesh,
+		Building,
+		NeedsBuffer,
+		Built,
+	};
+
 	struct ChunkMesh
 	{
 		PooledBuffer VertexBuffer;
 		PooledBuffer IndexBuffer;
 		uint32_t VertexCount;
 		uint32_t IndexCount;
-		PoolClass PendintVertexState;
-		PoolClass PendintIndexState;
+		ChunkMeshState State;
+		PoolClass PendingVertexPoolClass;
+		PoolClass PendingIndexPoolClass;
 
 		ChunkMesh()
 			: VertexBuffer()
 			, IndexBuffer()
 			, VertexCount(0)
 			, IndexCount(0)
-			, PendintVertexState(PoolClass::None)
-			, PendintIndexState(PoolClass::None)
+			, State(ChunkMeshState::NeedsMesh)
+			, PendingVertexPoolClass(PoolClass::None)
+			, PendingIndexPoolClass(PoolClass::None)
 
 		{ }
 	};
@@ -107,66 +122,50 @@ private:
 
 	ComPtr<ID3D11SamplerState> mSamplerState;
 
-	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshes;
 	ComPtr<ID3D11Buffer> mDebugRayVertexBuffer;
-
 	ComPtr<ID3D11Query> mPipelineQuery;
+
+
+
+
+	// Meshs
+	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshes;
+
+
 
 private:
 	GPUResourceService& mGPUResourceService;
 	TextureManager& mTextureManager;
-	MeshBuilder& mMeshBuilder;
+	JobScheduler& mJobScheduler;
 	StreamingPolicy& mStreamingPolicy;
 	SkyBox mSkyBox;
 
 
 private:
-	// GPU memory pool, 스케듈러 클래스 하나 생성하여 이동
+	// GPU memory pool
 	BufferPool mVertexBufferPool;
 	BufferPool mIndexBufferPool;
 	queue<PoolClass> mDeferredVertexBufferCreationQueue;
 	queue<PoolClass> mDeferredIndexBufferCreationQueue;
 
-	void CreateBufferPool();
-
-	void AllocateMoreAtVertexPool(const PoolClass poolClass);
-	void AllocateMoreAtIndexPool(const PoolClass poolClass);
-
-	void EnqueueVertexBufferCreation(const PoolClass poolClass);
-	void EnqueueIndexBufferCreation(const PoolClass poolClass);
 	void ProcessBufferCreationQueue(const uint32_t maxCreateCountPerFrame);
 
+	void CreateBufferPool();
+	void AllocateMoreAtVertexPool(const PoolClass poolClass);
+	void AllocateMoreAtIndexPool(const PoolClass poolClass);
+	void EnqueueVertexBufferCreation(const PoolClass poolClass);
+	void EnqueueIndexBufferCreation(const PoolClass poolClass);
+
+
+
 private:
+	queue<MeshData*> mCompletedBuildResults;
+	queue<MeshData*> mPendingUploads;
 
-	// Job Schdeuler로 이동
-	struct ChunkMeshBuildJob
-	{
-		IVector3 TargetChunkPosition;
 
-		ChunkMeshBuildJob(const IVector3 targetChunkPosition)
-			: TargetChunkPosition(targetChunkPosition)
-		{ }
-
-		bool operator==(const ChunkMeshBuildJob& rhs) const noexcept
-		{
-			return TargetChunkPosition == rhs.TargetChunkPosition;
-		}
-
-		struct Hasher
-		{
-			size_t operator()(const ChunkMeshBuildJob& v) const noexcept
-			{
-				return ChunkMath::ToChunkKey(v.TargetChunkPosition);
-			}
-		};
-	};
-
-	queue<ChunkMeshBuildJob> mDirtyChunkMeshQueue;
-	unordered_set<ChunkMeshBuildJob, ChunkMeshBuildJob::Hasher> mDirtyChunkKeys;
-
-	void ScheduleDirtyChunkMesh(const ChunkMeshBuildJob& job);
-	void ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos, MapManager& mapManager);
-	bool TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos, MapManager& mapManager);
+	bool TryUploadMesh(const MeshData& meshData);
+	void RequestChunkMeshBuild(const ChunkKey key);
+	void ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, const IVector3 cameraChunkPos, MapManager& mapManager);
 
 
 

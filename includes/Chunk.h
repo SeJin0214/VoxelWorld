@@ -6,6 +6,8 @@
 
 using namespace DirectX::SimpleMath;
 
+
+
 class Chunk
 {
 public:
@@ -30,8 +32,8 @@ private:
 
 	IVector3 mChunkPosition;
 	BlockType mGrid[CHUNK_SIZE][CHUNK_SIZE][CHUNK_SIZE]; // z, x, y
-	bool mbIsDirty;
 	uint32_t mActiveBlockCount;
+	bool mbIsDirty;
 
 	void DecreaseActiveBlockCount();
 };

@@ -5,6 +5,7 @@
 
 struct MeshData
 {
+	ChunkKey Key;
 	std::vector<BlockVertex> Vertices;
 	std::vector<uint32_t> Indices;
 };

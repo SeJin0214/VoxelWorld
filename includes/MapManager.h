@@ -23,6 +23,7 @@ public:
 	bool HasChunk(const ChunkKey key) const { return mChunks.contains(key); }
 	const Chunk& GetChunk(const ChunkInfo& chunkInfo) const;
 	const Chunk& GetChunk(const ChunkKey key) const;
+	Chunk& GetChunkForUpdate(const ChunkKey key) const;
 
 	void ClearDirty(const ChunkKey key);
 

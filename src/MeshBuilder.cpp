@@ -6,16 +6,20 @@
 MeshBuilder::MeshBuilder(BlockMaterialTable& blockMaterialTable)
 	: mBlockMaterialTable(blockMaterialTable)
 {
-	mMeshData.Vertices.reserve(MAX_VERTEX_COUNT);
-	mMeshData.Indices.reserve(MAX_INDEX_COUNT);
+	for (uint32_t i = 0; i < MAX_BUILD_COUNT; ++i)
+	{
+		mMeshDatas[i].Vertices.reserve(MAX_VERTEX_COUNT);
+		mMeshDatas[i].Indices.reserve(MAX_INDEX_COUNT);
+		mMeshDataPool.push(mMeshDatas + i);
+	}
 }
 
-const MeshData& MeshBuilder::Build(const Chunk& chunk)
+MeshData* MeshBuilder::Build(const Chunk& chunk)
 {
-	assert(chunk.IsDirty());
-
-	mMeshData.Vertices.clear();
-	mMeshData.Indices.clear();
+	MeshData* meshData = mMeshDataPool.front();
+	mMeshDataPool.pop();
+	meshData->Vertices.clear();
+	meshData->Indices.clear();
 	// chunk의 블록이 air인지
 
 	constexpr uint32_t size = static_cast<uint32_t>(Direction::Size);
@@ -76,10 +80,10 @@ const MeshData& MeshBuilder::Build(const Chunk& chunk)
 					Vector2 uv(xy.StartX == 0 ? xy.StartX : static_cast<float>(xy.StartX) / mBlockMaterialTable.AtlasSize, 
 						xy.StartY == 0 ? xy.StartY : static_cast<float>(xy.StartY) / mBlockMaterialTable.AtlasSize);
 					//printf("%f, %f\n", uv.x, uv.y);
-					BlockMeshData::AddFace(mMeshData.Vertices, mMeshData.Indices, static_cast<Direction>(i), IVector3(x, y, z), chunkWorldPosition, uv);
+					BlockMeshData::AddFace(meshData->Vertices, meshData->Indices, static_cast<Direction>(i), IVector3(x, y, z), chunkWorldPosition, uv);
 				}
 			}
 		}
 	}
-	return mMeshData;
+	return meshData;
 }

@@ -1,5 +1,10 @@
 #include <cassert>
 #include <wrl/client.h>
+#include <iostream>
+#include <cmath>
+#include <vector>
+#include <limits>
+
 #include "Renderer.h"
 #include "WVPMatrix.h"
 #include "DirectXMath.h"
@@ -7,22 +12,19 @@
 #include "ScreenManager.h"
 #include "MapManager.h"
 #include "TextureManager.h"
+#include "GPUResourceService.h"
 
-#include <iostream>
-#include <cmath>
-#include <vector>
-#include <limits>
 #include "Logger.h"
 #include "PathUtils.h"
 #include "Timer.h"
 #include "ScopedProfiler.h"
 #include "ChunkMath.h"
 #include "StreamingPolicy.h"
-
+#include "JobScheduler.h"
 
 using namespace DirectX;
 
-Renderer::Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, MeshBuilder& meshBuilder, StreamingPolicy& streamingPolicy)
+Renderer::Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, JobScheduler& jobScheduler, StreamingPolicy& streamingPolicy)
 	: mDevice(deviceBundle.Device)
 	, mDeviceContext(deviceBundle.DeviceContext)
 	, mSwapChain(deviceBundle.SwapChain)
@@ -41,7 +43,7 @@ Renderer::Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuReso
 	, mPipelineQuery(gpuResourceService.CreatePipelineStatisticsQuery())
 	, mGPUResourceService(gpuResourceService)
 	, mTextureManager(textureManager)
-	, mMeshBuilder(meshBuilder)
+	, mJobScheduler(jobScheduler)
 	, mStreamingPolicy(streamingPolicy)
 	, mSkyBox(gpuResourceService, textureManager)
 {
@@ -91,36 +93,41 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 			continue;
 		}
 
+		ChunkKey key = ChunkMath::ToChunkKey(chunkPosition);
+		ChunkMesh& chunkMesh = mChunkMeshes[key];
 		if (chunk.IsDirty())
 		{
-			// 프러스텀에 보이고, 비어있지 않고, 바뀌었다면 생성한다.
-			ScheduleDirtyChunkMesh(ChunkMeshBuildJob(chunkPosition));
+			// 바뀐 건 한 번 밖에 안 들어온다.
+			chunkMesh.State = ChunkMeshState::NeedsMesh;
+			RequestChunkMeshBuild(key);
+			mapManager.ClearDirty(key);
 		}
 
-		ChunkKey key = ChunkMath::ToChunkKey(chunkPosition);
-		if (mChunkMeshes.contains(key) == false)
+		bool bHasNoBuffer = chunkMesh.VertexBuffer.Buffer == nullptr;
+		if (bHasNoBuffer)
 		{
+			assert(chunkMesh.IndexBuffer.Buffer == nullptr);
 			continue;
 		}
 
-		ChunkMesh& chunkMesh = mChunkMeshes[key];
 		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
 		//++drawCallCount;
 	}
-
-	mSkyBox.BeginFrame(mDeviceContext.Get(), camera);
-	mSkyBox.Draw(mDeviceContext.Get());
 
 	//timer.StartSection();
 	constexpr uint32_t MAX_CREATE_COUNT_PER_FRAME = 20;
 	ProcessBufferCreationQueue(MAX_CREATE_COUNT_PER_FRAME);
 
 	IVector3 cameraChunkPos = ChunkMath::ToChunkOrigin(camera.GetPosition());
+	mJobScheduler.ProcessBuild(*this, mapManager, cameraChunkPos);
 
 	constexpr uint32_t MESH_MAX_CREATE_COUNT_PER_FRAME = 4;
 	ProcessMeshCreation(MESH_MAX_CREATE_COUNT_PER_FRAME, cameraChunkPos, mapManager);
 
-	//createTime += timer.EndSectionMS();
+
+	mSkyBox.BeginFrame(mDeviceContext.Get(), camera);
+	mSkyBox.Draw(mDeviceContext.Get());
+
 	//mVertexBufferPool.printBufferSize();
 	
 	
@@ -338,124 +345,145 @@ void Renderer::EnqueueIndexBufferCreation(const PoolClass poolClass)
 	mDeferredIndexBufferCreationQueue.push(poolClass);
 }
 
-void Renderer::ScheduleDirtyChunkMesh(const ChunkMeshBuildJob& job)
+void Renderer::RequestChunkMeshBuild(const ChunkKey key)
 {
-	if (mDirtyChunkKeys.contains(job))
+	ChunkMesh& chunkMesh = mChunkMeshes[key];
+	if (chunkMesh.State == ChunkMeshState::Building || chunkMesh.State == ChunkMeshState::NeedsBuffer || chunkMesh.State == ChunkMeshState::Built)
 	{
 		return;
 	}
-	mDirtyChunkMeshQueue.push(job);
-	mDirtyChunkKeys.insert(job);
+	else if (chunkMesh.State == ChunkMeshState::NeedsMesh)
+	{
+		chunkMesh.State = ChunkMeshState::Building;
+	}
+	else
+	{
+		assert(false);
+	}
+	mJobScheduler.RequestBuild(key);
 }
 
-
-// 이거 분리하는 게 맞다. Renderer에서 스케줄링, MapManager에서 청크 상태 관리, JobScheduler에서 실제 생성 담당
-void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, IVector3 cameraChunkPos, MapManager& mapManager)
+void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, const IVector3 cameraChunkPos, MapManager& mapManager)
 {
+	while (mCompletedBuildResults.empty() == false)
+	{
+		mPendingUploads.push(mCompletedBuildResults.front());
+		mCompletedBuildResults.pop();
+	}
+
 	uint32_t i = 0;
 	uint32_t j = 0;
 	constexpr uint32_t MAX_LOOP = 1000;
-	while (i < maxCreateCountPerFrame && j < MAX_LOOP && !mDirtyChunkMeshQueue.empty())
+	while (i < maxCreateCountPerFrame && j < MAX_LOOP && !mPendingUploads.empty())
 	{
-		ChunkMeshBuildJob& job = mDirtyChunkMeshQueue.front();
-		if (TryCreateMesh(job, cameraChunkPos, mapManager))
+		++j;
+		MeshData* data = mPendingUploads.front();
+		mPendingUploads.pop();
+
+		ChunkKey key = data->Key;
+		if (mapManager.HasChunk(key) == false)
+		{
+			mJobScheduler.ReleaseMeshData(data);
+			OnDisableChunk(key);
+			continue;
+		}
+
+		const Chunk& chunk = mapManager.GetChunk(key);
+		if (mStreamingPolicy.ShouldKeep(chunk.GetChunkPosition(), cameraChunkPos) == false)
+		{
+			mJobScheduler.ReleaseMeshData(data);
+			OnDisableChunk(key);
+			continue;
+		}
+
+		if (TryUploadMesh(*data))
 		{
 			++i;
+			mJobScheduler.ReleaseMeshData(data);
 		}
-		++j;
-		mDirtyChunkMeshQueue.pop();
+		else
+		{
+			mPendingUploads.push(data);
+		}
 	}
 }
 
-// 비동기 동작 
-bool Renderer::TryCreateMesh(const ChunkMeshBuildJob& job, IVector3 cameraChunkPos, MapManager& mapManager)
+// build된 거랑 아닌 거랑 구분을 해야 하는 것이 좋은데...
+bool Renderer::TryUploadMesh(const MeshData& meshData)
 {
-	mDirtyChunkKeys.erase(job);
-
-	ChunkKey key = ChunkMath::ToChunkKey(job.TargetChunkPosition);
-	if (mStreamingPolicy.ShouldKeep(job.TargetChunkPosition, cameraChunkPos) == false || mapManager.HasChunk(key) == false)
-	{
-		return false;
-	}
-
-	const Chunk& chunk = mapManager.GetChunk(key);
+	ChunkKey key = meshData.Key;
 	ChunkMesh& chunkMesh = mChunkMeshes[key];
-
-	bool bUploading = (chunkMesh.PendintVertexState != PoolClass::None && mVertexBufferPool.IsExhaustedPool(chunkMesh.PendintVertexState)
-		|| chunkMesh.PendintIndexState != PoolClass::None && mIndexBufferPool.IsExhaustedPool(chunkMesh.PendintIndexState));
-	if (bUploading)
+	bool bWaitingForPendingBuffers =
+		(chunkMesh.State == ChunkMeshState::NeedsBuffer
+			&& chunkMesh.PendingVertexPoolClass != PoolClass::None 
+			&& mVertexBufferPool.IsExhaustedPool(chunkMesh.PendingVertexPoolClass)
+			|| chunkMesh.State == ChunkMeshState::NeedsBuffer
+			&& chunkMesh.PendingIndexPoolClass != PoolClass::None 
+			&& mIndexBufferPool.IsExhaustedPool(chunkMesh.PendingIndexPoolClass));
+	if (bWaitingForPendingBuffers)
 	{
-		ScheduleDirtyChunkMesh(job);
 		return false;
 	}
 
-	const MeshData& newMeshData = mMeshBuilder.Build(chunk);
-
-	const uint32_t newVertexBytes = static_cast<uint32_t>(newMeshData.Vertices.size()) * VERTEX_BYTE;
-	const uint32_t newIndexBytes = static_cast<uint32_t>(newMeshData.Indices.size()) * INDEX_BYTE;
-	PoolClass vertexPoolClass = BufferPool::GetFitSizeClass(newVertexBytes);
-	PoolClass indexPoolClass = BufferPool::GetFitSizeClass(newIndexBytes);
+	const uint32_t newVertexBytes = static_cast<uint32_t>(meshData.Vertices.size()) * VERTEX_BYTE;
+	const uint32_t newIndexBytes = static_cast<uint32_t>(meshData.Indices.size()) * INDEX_BYTE;
+	PoolClass needVertexPoolClass = BufferPool::GetFitSizeClass(newVertexBytes);
+	PoolClass needIndexPoolClass = BufferPool::GetFitSizeClass(newIndexBytes);
 
 	bool bNeedResizeVertex = BufferPool::GetByte(chunkMesh.VertexBuffer.Class) < newVertexBytes;
-	bool bNeedVertex = bNeedResizeVertex && mVertexBufferPool.IsExhaustedPool(vertexPoolClass);
-	if (bNeedVertex)
+	bool bNeedsNewVertexBufferButPoolIsEmpty = bNeedResizeVertex && mVertexBufferPool.IsExhaustedPool(needVertexPoolClass);
+	if (bNeedsNewVertexBufferButPoolIsEmpty)
 	{
-		EnqueueVertexBufferCreation(vertexPoolClass);
-		chunkMesh.PendintVertexState = vertexPoolClass;
+		EnqueueVertexBufferCreation(needVertexPoolClass);
+		chunkMesh.PendingVertexPoolClass = needVertexPoolClass;
 	}
 
 	bool bNeedResizeIndex = BufferPool::GetByte(chunkMesh.IndexBuffer.Class) < newIndexBytes;
-	bool bNeedIndex = bNeedResizeIndex && mIndexBufferPool.IsExhaustedPool(indexPoolClass);
-	if (bNeedIndex)
+	bool bNeedsNewIndexBufferButPoolIsEmpty = bNeedResizeIndex && mIndexBufferPool.IsExhaustedPool(needIndexPoolClass);
+	if (bNeedsNewIndexBufferButPoolIsEmpty)
 	{
-		EnqueueIndexBufferCreation(indexPoolClass);
-		chunkMesh.PendintIndexState = indexPoolClass;
+		EnqueueIndexBufferCreation(needIndexPoolClass);
+		chunkMesh.PendingIndexPoolClass = needIndexPoolClass;
 	}
 
-	if (bNeedVertex || bNeedIndex)
+	if (bNeedsNewVertexBufferButPoolIsEmpty || bNeedsNewIndexBufferButPoolIsEmpty)
 	{
-		ScheduleDirtyChunkMesh(job);
+		chunkMesh.State = ChunkMeshState::NeedsBuffer;
 		return false;
 	}
 
-	assert((bNeedResizeVertex == false || mVertexBufferPool.IsExhaustedPool(vertexPoolClass) == false)
-		&& (bNeedResizeIndex == false || mIndexBufferPool.IsExhaustedPool(indexPoolClass) == false));
+	// 여기가 렌더러 로직
+	assert((bNeedResizeVertex == false || mVertexBufferPool.IsExhaustedPool(needVertexPoolClass) == false)
+		&& (bNeedResizeIndex == false || mIndexBufferPool.IsExhaustedPool(needIndexPoolClass) == false));
 
 	if (bNeedResizeVertex)
 	{
 		if (chunkMesh.VertexBuffer.Class != PoolClass::None)
 		{
-			assert(chunkMesh.VertexBuffer.Class != PoolClass::Size);
 			mVertexBufferPool.DespawnBuffer(chunkMesh.VertexBuffer);
 		}
-		mVertexBufferPool.SpawnBuffer(vertexPoolClass, chunkMesh.VertexBuffer);
-		chunkMesh.PendintVertexState = PoolClass::None;
+		mVertexBufferPool.SpawnBuffer(needVertexPoolClass, chunkMesh.VertexBuffer);
+		chunkMesh.PendingVertexPoolClass = PoolClass::None;
 	}
 
 	if (bNeedResizeIndex)
 	{
 		if (chunkMesh.IndexBuffer.Class != PoolClass::None)
 		{
-			assert(chunkMesh.IndexBuffer.Class != PoolClass::Size);
 			mIndexBufferPool.DespawnBuffer(chunkMesh.IndexBuffer);
 		}
-		mIndexBufferPool.SpawnBuffer(indexPoolClass, chunkMesh.IndexBuffer);
-		chunkMesh.PendintIndexState = PoolClass::None;
+		mIndexBufferPool.SpawnBuffer(needIndexPoolClass, chunkMesh.IndexBuffer);
+		chunkMesh.PendingIndexPoolClass = PoolClass::None;
 	}
 
-	chunkMesh.VertexCount = static_cast<UINT>(newMeshData.Vertices.size());
-	chunkMesh.IndexCount = static_cast<UINT>(newMeshData.Indices.size());
+	chunkMesh.VertexCount = static_cast<UINT>(meshData.Vertices.size());
+	chunkMesh.IndexCount = static_cast<UINT>(meshData.Indices.size());
 
 	assert(chunkMesh.VertexBuffer.Buffer != nullptr && chunkMesh.IndexBuffer.Buffer != nullptr);
 
-	mGPUResourceService.UpdateDynamicBuffer(chunkMesh.VertexBuffer.Buffer.Get(), newMeshData.Vertices.data(), static_cast<size_t>(chunkMesh.VertexCount) * VERTEX_BYTE);
-	mGPUResourceService.UpdateDynamicBuffer(chunkMesh.IndexBuffer.Buffer.Get(), newMeshData.Indices.data(), static_cast<size_t>(chunkMesh.IndexCount) * INDEX_BYTE);
+	mGPUResourceService.UpdateDynamicBuffer(chunkMesh.VertexBuffer.Buffer.Get(), meshData.Vertices.data(), static_cast<size_t>(chunkMesh.VertexCount) * VERTEX_BYTE);
+	mGPUResourceService.UpdateDynamicBuffer(chunkMesh.IndexBuffer.Buffer.Get(), meshData.Indices.data(), static_cast<size_t>(chunkMesh.IndexCount) * INDEX_BYTE);
 
-	mapManager.ClearDirty(key);
+	chunkMesh.State = ChunkMeshState::Built;
 	return true;
 }
-
-
-
-
-

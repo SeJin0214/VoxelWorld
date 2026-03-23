@@ -33,6 +33,12 @@ void MapManager::Update(const Camera& camera, Renderer& renderer)
 	}
 }
 
+void MapManager::ClearDirty(const ChunkKey key)
+{
+	assert(mChunks.contains(key));
+	mChunkArray[mChunks[key]].ClearDirty();
+}
+
 void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 {
 	mLastChunkPosition = ChunkMath::ToChunkOrigin(camera.GetPosition());
@@ -87,12 +93,6 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 	// 현재 청크 포지션을 기준으로 렌더 거리 내의 청크들을 스폰
 }
 
-void MapManager::ClearDirty(const ChunkKey key)
-{
-	assert(mChunks.contains(key));
-	mChunkArray[mChunks[key]].ClearDirty();
-}
-
 bool MapManager::IsMovedChunkPosition(const Camera& camera) const
 {
 	return mLastChunkPosition != ChunkMath::ToChunkOrigin(camera.GetPosition());
@@ -124,11 +124,17 @@ void MapManager::RemoveBlockAt(const Vector3 blockPosition)
 	chunk.RemoveBlockAt(blockPosition);
 }
 
-// 동기화 보장
 const Chunk& MapManager::GetChunk(const ChunkKey key) const
 {
 	assert(mChunks.contains(key));
 	return mChunkArray[mChunks.find(key)->second]; // const라 []가 안 됨
+}
+
+Chunk& MapManager::GetChunkForUpdate(const ChunkKey key) const
+{
+	// const_cast로 변경하는 게 좋을 거 같다.
+	assert(mChunks.contains(key));
+	return mChunkArray[mChunks.find(key)->second];
 }
 
 // mUsedChunks와 같이 사용

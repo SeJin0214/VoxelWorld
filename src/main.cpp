@@ -28,6 +28,8 @@
 #include "ImGuiLayer.h"
 #include "DebugUI.h"
 #include "Profiler.h"
+#include "GPUResourceService.h"
+#include "JobScheduler.h"
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(
 	HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -95,7 +97,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	BlockMaterialTable blockMaterialTable = BlockLoader::Load(PathUtils::GetAssetPath("Atlas.json"));
 	MeshBuilder meshBuilder(blockMaterialTable);
-	Renderer renderer(deviceBundle, gpuResourceService, textureManager, meshBuilder, streamingPolicy);
+	JobScheduler jobScheduler(meshBuilder, streamingPolicy);
+	Renderer renderer(deviceBundle, gpuResourceService, textureManager, jobScheduler, streamingPolicy);
 	renderer.Create();
 	renderer.SetupStaticPipelineState();
 

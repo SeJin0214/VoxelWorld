@@ -22,6 +22,9 @@ void DebugUI::Draw(Profiler& profiler, const DebugUIContext& context)
 	ImGui::Text("Render Distance %u\n", context.RuntimeConfig.GetRenderDistance());
 	ImGui::Text("Loaded Chunks %u\n", context.MapManager.GetUsedChunkCount());
 	ImGui::Text("Built Meshes %u\n", context.Renderer.GetBuiltMeshCount());
+	ImGui::Text("Pending Jobs %u\n", context.Renderer.GetJobs());
+
+
 
 	ImGui::Separator();
 	ImGui::Separator();
