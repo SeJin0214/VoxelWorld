@@ -84,3 +84,11 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:_DEBUG>
     $<$<CONFIG:RelWithDebInfo,Debug>:PROFILE>
 )
+
+option(ENABLE_AUTOMATION_TEST "Enable automation test" OFF)
+
+if(ENABLE_AUTOMATION_TEST)
+    target_compile_definitions(${PROJECT_NAME} PRIVATE 
+		ENABLE_AUTOMATION_TEST=1
+	)
+endif()

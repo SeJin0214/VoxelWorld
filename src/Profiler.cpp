@@ -47,7 +47,7 @@ uint32_t Profiler::Get15SecondAverageFPS() const
 #endif
 }
 
-void Profiler::ApplySample(queue<PerformanceSample>& windowSamples, int32_t& sumFPS, const float scaleWindowSec, const PerformanceSample newSample)
+void Profiler::ApplySample(queue<PerformanceSample>& windowSamples, uint32_t& sumFPS, const float scaleWindowSec, const PerformanceSample newSample)
 {
 #ifdef PROFILE
 	sumFPS += newSample.FPS;

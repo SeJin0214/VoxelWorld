@@ -37,17 +37,17 @@ private:
 
 	struct PerformanceSample
 	{
-		int32_t FPS;
+		uint32_t FPS;
 		double MonotonicSeconds;
 	};
 
 	queue<PerformanceSample> mShortWindowSamples;
 	queue<PerformanceSample> mLongWindowSamples;
 
-	int32_t mShortWindowFPSSum;
-	int32_t mLongWindowFPSSum;
+	uint32_t mShortWindowFPSSum;
+	uint32_t mLongWindowFPSSum;
 
-	void ApplySample(queue<PerformanceSample>& windowSamples, int32_t& sumFPS, const float scaleWindowSec, const PerformanceSample newSample);
+	void ApplySample(queue<PerformanceSample>& windowSamples, uint32_t& sumFPS, const float scaleWindowSec, const PerformanceSample newSample);
 
 private:
 	map<uint32_t, uint32_t> mFPSBucketCounts;

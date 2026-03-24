@@ -1,9 +1,13 @@
+ï»¿
 //#define _CRTDBG_MAP_ALLOC
 //#include <stdlib.h>
 //#include <crtdbg.h>
 
+#ifdef ENABLE_AUTOMATION_TEST
+	#include "TestRunner.h"
+#endif
 
-// ÄÜ¼Ö Ãâ·Â 
+// ì½˜ì†” ì¶œë ¥ 
 #pragma comment(linker, "/subsystem:console")
 #pragma comment(linker, "/entry:WinMainCRTStartup")
 
@@ -105,7 +109,12 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	MapManager mapManager(streamingPolicy);
 	InputManager inputManager;
 
-	Camera camera(Vector3(5, 0, -50), Vector3());
+	Camera camera(Vector3(5, 20, 0), Vector3());
+
+#ifdef ENABLE_AUTOMATION_TEST
+	TestRunner runner(Vector3(WorldConfig::WORLD_MIN_X, 30.f, WorldConfig::WORLD_MIN_Z));
+	camera.SetPosition(runner.GetPostion());
+#endif
 
 	Timer timer;
 	timer.Reset();
@@ -125,19 +134,25 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 				break;
 			}
 		}
+		float deltaTime = timer.GetDeltaTime();
 
 		if (inputManager.Update() == false)
 		{
 			break;
 		}
 
-		float deltaTime = timer.GetDeltaTime();
+		// ì–˜ë„¤ê¹Œì§€ Scene ì•ˆì— í¬í•¨ ë  
+#ifdef ENABLE_AUTOMATION_TEST
+		// test ì½”ë“œ ì‘ì„±
+		CameraInput input = runner.Update(deltaTime);
+		camera.Update(input, deltaTime, mapManager);
+#else
+		
 		camera.Update(inputManager, deltaTime, mapManager);
-
+#endif
 		mapManager.Update(camera, renderer);
 
 		imGuiLayer.BeginFrame();
-
 		renderer.Update(camera, deltaTime, mapManager);
 
 		profiler.UpdateFrameMetrics(timer);
@@ -152,8 +167,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	renderer.Release();
 
-	// ¿©±â¼­ ÇÁ·¹ÀÓÀ» ÂïÀ»±î?
+	// ì—¬ê¸°ì„œ í”„ë ˆì„ì„ ì°ì„ê¹Œ?
 
 
 	return 0;
 }
+

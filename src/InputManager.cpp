@@ -22,7 +22,6 @@ bool InputManager::Update()
 	mbIsLeftButtonDown = false;
 	mbShouldChangedSpeed = false;
 
-
 	mKeyboardMovement = Vector3::Zero;
 	Keyboard::State state = mKeyboard->GetState();
 

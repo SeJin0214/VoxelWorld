@@ -1,4 +1,3 @@
-#include <windows.h>
 #include <stdio.h>
 #include <cassert>
 #include <chrono>
@@ -13,7 +12,7 @@
 
 Logger::Logger()
     : mCurrentFile(0)
-    , mDirectoryPath(PathUtils::GetProjectRoot() / "Logs")
+    , mDirectoryPath(PathUtils::GetProjectRoot() / "logs")
 {
     // 없으면 알아서 false 반환
     std::filesystem::create_directories(mDirectoryPath);

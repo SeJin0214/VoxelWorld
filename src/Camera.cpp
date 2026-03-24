@@ -1,12 +1,12 @@
-#include <algorithm>
+Ôªø#include <algorithm>
 #include <string>
 #include <DirectXMath.h>
 #include "Camera.h"
 #include "ScreenManager.h"
-#include "InputManager.h"
 #include "MapManager.h"
 #include "Logger.h"
 #include "WorldConfig.h"
+#include "InputManager.h"
 
 Camera::Camera(const Vector3 position, const Vector3 rotation)
 	: mPosition(position)
@@ -20,8 +20,20 @@ Camera::Camera(const Vector3 position, const Vector3 rotation)
 
 void Camera::Update(const InputManager& inputManager, const float deltaTime, MapManager& mapManager)
 {
-	Vector3 position = inputManager.GetKeyboardMovement();
-	Vector3 mouseMovement = inputManager.GetMouseMovement();
+	CameraInput input
+	{
+		input.KeyboardMovement = inputManager.GetKeyboardMovement(),
+		input.MouseMovement = inputManager.GetMouseMovement(),
+		input.bIsLeftButtonDown = inputManager.IsLeftButtonDown(),
+		input.bShouldChangedSpeed = inputManager.ShouldChangedSpeed(),
+	};
+	Update(input, deltaTime, mapManager);
+}
+
+void Camera::Update(const CameraInput& input, const float deltaTime, MapManager& mapManager)
+{
+	Vector3 position = input.KeyboardMovement;
+	Vector3 mouseMovement = input.MouseMovement;
 
 	mbTransformDirty = true;
 	if (position != Vector3::Zero || mouseMovement != Vector3::Zero)
@@ -30,12 +42,12 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime, Map
 		CreateViewMatrix(position, mouseMovement, deltaTime);
 	}
 
-	if (inputManager.IsLeftButtonDown())
+	if (input.bIsLeftButtonDown)
 	{
 		TryRemoveBlock(mapManager);
 	}
 
-	if (inputManager.ShouldChangedSpeed())
+	if (input.bShouldChangedSpeed)
 	{
 		mSpeedLevel = (mSpeedLevel + 1) % MAX_LEVEL;
 	}
@@ -43,7 +55,6 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime, Map
 
 void Camera::TryRemoveBlock(MapManager& mapManager) const
 {
-	
 	Vector3 forward = GetForwardDirection();
 	constexpr float STEP = 0.1f;
 	float o = 0.5f;
@@ -52,11 +63,11 @@ void Camera::TryRemoveBlock(MapManager& mapManager) const
 		Vector3 checkPos = mPosition + forward * o;
 		o += STEP;
 
-		LOG(LogSink::Console, LogLevel::Debug, "∫Ì∑œ ¡¶∞≈ Try at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
+		LOG(LogSink::Console, LogLevel::Debug, "Î∏îÎ°ù Ï†úÍ±∞ Try at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
 		if (mapManager.IsBlockAt(checkPos))
 		{
 			mapManager.RemoveBlockAt(checkPos);
-			LOG(LogSink::Console, LogLevel::Debug, "∫Ì∑œ ¡¶∞≈ at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
+			LOG(LogSink::Console, LogLevel::Debug, "Î∏îÎ°ù Ï†úÍ±∞ at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
 			break;
 		}
 	}
@@ -101,6 +112,7 @@ float Camera::GetCurrentSpeed() const
 	assert(0 <= mSpeedLevel && mSpeedLevel < MAX_LEVEL);
 	return SPEEDS[mSpeedLevel];
 }
+
 
 
 

@@ -21,7 +21,7 @@ private:
 	static constexpr int32_t MAX_LEVEL = 5;
 	static_assert(MAX_LEVEL > 2);
 
-	static constexpr double COOLDOWN_TIME = 4.0;
+	static constexpr double COOLDOWN_TIME = 10.0;
 	static_assert(COOLDOWN_TIME > 0.0);
 
 	static constexpr int32_t sRenderDistanceLevels[MAX_LEVEL] =
