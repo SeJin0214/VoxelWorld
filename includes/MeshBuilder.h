@@ -24,7 +24,7 @@ public:
 	MeshData* Build(const Chunk& chunk);
 
 private:
-	static constexpr uint32_t MAX_BUILD_COUNT = 8;
+	static constexpr uint32_t MAX_BUILD_COUNT = 16;
 	// 체크무늬일 때가 이론상 최고 
 	static constexpr uint32_t MAX_INDEX_COUNT = 147456;
 	static constexpr uint32_t MAX_VERTEX_COUNT = 98304;

@@ -31,43 +31,43 @@ bool InputManager::Update()
 	if (state.Escape)
 	{
 		return false;
-		//Logger::LogLine("Z 키 누르는 중 - 아래로 이동!\n");
+		//Logger::Log("Z 키 누르는 중 - 아래로 이동!\n");
 	}
 
 	if (state.W)
 	{
 		mKeyboardMovement.z += 1.f;
-		//Logger::LogLine("W 키 누르는 중 - 앞으로 이동!");
+		//Logger::Log("W 키 누르는 중 - 앞으로 이동!");
 	}
 
 	if (state.S)
 	{
 		mKeyboardMovement.z -= 1.f;
-		//Logger::LogLine("S 키 누르는 중 - 뒤로 이동!\n");
+		//Logger::Log("S 키 누르는 중 - 뒤로 이동!\n");
 	}
 
 	if (state.A)
 	{
 		mKeyboardMovement.x -= 1.f;
-		//Logger::LogLine("A 키 누르는 중 - 왼쪽으로 이동!\n");
+		//Logger::Log("A 키 누르는 중 - 왼쪽으로 이동!\n");
 	}
 
 	if (state.D)
 	{
 		mKeyboardMovement.x += 1.f;
-		//Logger::LogLine("D 키 누르는 중 - 오른쪽으로 이동!\n");
+		//Logger::Log("D 키 누르는 중 - 오른쪽으로 이동!\n");
 	}
 
 	if (state.Q)
 	{
 		mKeyboardMovement.y += 1.f;
-		//Logger::LogLine("Q 키 누르는 중 - 위로 이동!\n");
+		//Logger::Log("Q 키 누르는 중 - 위로 이동!\n");
 	}
 
 	if (state.Z)
 	{
 		mKeyboardMovement.y -= 1.f;
-		//Logger::LogLine("Z 키 누르는 중 - 아래로 이동!\n");
+		//Logger::Log("Z 키 누르는 중 - 아래로 이동!\n");
 	}
 
 	if (mKeyboardTracker.pressed.LeftShift)
@@ -93,11 +93,11 @@ bool InputManager::Update()
 		mbIsMoved = true;
 	}
 
-	//Logger::LogLine("마우스 이동 x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
+	//Logger::Log("마우스 이동 x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
 	mMouseTracker.Update(mouseState);
 	if (mMouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED) 
 	{
-		Logger::LogLine("마우스 클릭");
+		LOG(LogSink::Console, LogLevel::Info, "마우스 클릭");
 		mbIsLeftButtonDown = true;
 	}
 	return true;

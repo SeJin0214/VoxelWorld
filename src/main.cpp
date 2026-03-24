@@ -109,11 +109,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
 	Timer timer;
 	timer.Reset();
-
-	static uint32_t frameNumber = 0;
+	
 	while (true)
 	{
-		++frameNumber;
 		timer.Tick();
 
 		MSG msg;
@@ -145,7 +143,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 		profiler.UpdateFrameMetrics(timer);
 		adaptiveRenderDistanceController.Update(profiler, deltaTime);
 
-		DebugUIContext debugUIContext{ runtimeConfig, mapManager, renderer };
+		DebugUIContext debugUIContext{ camera, runtimeConfig, mapManager, renderer };
 		debugUI.Draw(profiler, debugUIContext);
 
 		imGuiLayer.Render();
@@ -153,6 +151,9 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 	}
 
 	renderer.Release();
+
+	// 여기서 프레임을 찍을까?
+
 
 	return 0;
 }

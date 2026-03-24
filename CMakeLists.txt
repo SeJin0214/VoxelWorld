@@ -81,5 +81,6 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 # 전처리기
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    $<$<CONFIG:Debug>:_DEBUG>
     $<$<CONFIG:RelWithDebInfo,Debug>:PROFILE>
 )

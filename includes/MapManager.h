@@ -12,6 +12,7 @@ class Chunk;
 class Renderer;
 class StreamingPolicy;
 
+
 class MapManager
 {
 public:
@@ -52,3 +53,5 @@ private:
 	int32_t SpawnChunk();
 	void DespawnChunkAt(const int32_t index);
 };
+
+

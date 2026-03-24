@@ -12,6 +12,7 @@ JobScheduler::JobScheduler(MeshBuilder& meshBuilder, StreamingPolicy& streamingP
 
 void JobScheduler::ProcessBuild(Renderer& renderer, MapManager& mapManager, const IVector3 cameraChunkPos)
 {
+	uint32_t buildCount = 0;
 	while (mRequestBuildJobs.empty() == false)
 	{
 		mPendingBuildJobs.push(mRequestBuildJobs.front());
@@ -39,7 +40,10 @@ void JobScheduler::ProcessBuild(Renderer& renderer, MapManager& mapManager, cons
 		MeshData* mesh = mMeshBuilder.Build(chunk);
 		mesh->Key = key;
 		renderer.PushCompletedChunkMesh(mesh);
+
+		++buildCount;
 	}
+	//printf("buildCount %u\n", buildCount);
 }
 
 void JobScheduler::ReleaseMeshData(MeshData* meshData)

@@ -42,6 +42,6 @@ public:
 private:
 	RuntimeConfig& mRuntimeConfig;
 
-	static constexpr int32_t UNLOAD_PADDING_CHUNKS = 2; // 언로드 시 렌더 거리보다 추가 여유 청크 수
+	static constexpr int32_t UNLOAD_PADDING_CHUNKS = 4; // 언로드 시 렌더 거리보다 추가 여유 청크 수
 
 };

@@ -13,7 +13,7 @@ namespace
 
 	bool LooksLikeProjectRoot(const std::filesystem::path& path)
 	{
-		static constexpr std::array<const char*, 3> kRequiredDirectories =
+		static constexpr const char* kRequiredDirectories[3] =
 		{
 			"assets",
 			"shaders",

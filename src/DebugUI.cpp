@@ -13,6 +13,8 @@ void DebugUI::Draw(Profiler& profiler, const DebugUIContext& context)
 	ImGui::Begin("Performance", nullptr,
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_AlwaysAutoResize);
+	Vector3 position = context.Camera.GetPosition();
+	ImGui::Text("Position (%.2f, %.2f, %.2f)\n", position.x, position.y, position.z);
 	ImGui::Text("FrameTimeMS %f\n", profiler.GetFrameTimeMS());
 	ImGui::Text("FPS %u\n", profiler.GetFPS());
 
@@ -22,7 +24,7 @@ void DebugUI::Draw(Profiler& profiler, const DebugUIContext& context)
 	ImGui::Text("Render Distance %u\n", context.RuntimeConfig.GetRenderDistance());
 	ImGui::Text("Loaded Chunks %u\n", context.MapManager.GetUsedChunkCount());
 	ImGui::Text("Built Meshes %u\n", context.Renderer.GetBuiltMeshCount());
-	ImGui::Text("Pending Jobs %u\n", context.Renderer.GetJobs());
+	ImGui::Text("Pending Jobs %u\n", context.Renderer.GetPendingUploadsCount());
 
 
 

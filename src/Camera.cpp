@@ -52,11 +52,11 @@ void Camera::TryRemoveBlock(MapManager& mapManager) const
 		Vector3 checkPos = mPosition + forward * o;
 		o += STEP;
 
-		Logger::LogLine("블록 제거 Try at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
+		LOG(LogSink::Console, LogLevel::Info, "블록 제거 Try at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
 		if (mapManager.IsBlockAt(checkPos))
 		{
 			mapManager.RemoveBlockAt(checkPos);
-			Logger::LogLine("블록 제거 at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
+			LOG(LogSink::Console, LogLevel::Info, "블록 제거 at (%f, %f, %f)", checkPos.x, checkPos.y, checkPos.z);
 			break;
 		}
 	}

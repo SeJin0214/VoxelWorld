@@ -8,9 +8,11 @@ class Profiler;
 class RuntimeConfig;
 class MapManager;
 class Renderer;
+class Camera;
 
 struct DebugUIContext
 {
+	const Camera& Camera;
 	const RuntimeConfig& RuntimeConfig;
 	const MapManager& MapManager;
 	const Renderer& Renderer;

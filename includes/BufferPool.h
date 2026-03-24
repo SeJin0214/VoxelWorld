@@ -36,8 +36,8 @@ struct PooledBuffer
 };
 
 // 공용 버퍼풀을 만들고
-// 
 // Size Buffer Pool을 만드는 게 나을지도?
+
 class BufferPool
 {
 public:
@@ -50,9 +50,9 @@ public:
 		{.MaxSizeKB = 64,   .Capacity = 1024 },
 		{.MaxSizeKB = 128,  .Capacity = 2048 },
 		{.MaxSizeKB = 256,  .Capacity = 4096 },
-		{.MaxSizeKB = 512,  .Capacity = 2048 },
-		{.MaxSizeKB = 1024, .Capacity = 16  },
-		{.MaxSizeKB = 2048, .Capacity = 8 },
+		{.MaxSizeKB = 512,  .Capacity = 1024 },
+		{.MaxSizeKB = 1024, .Capacity = 1  },
+		{.MaxSizeKB = 2048, .Capacity = 1 },
 	};
 
 	static_assert(

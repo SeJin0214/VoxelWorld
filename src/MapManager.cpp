@@ -28,7 +28,7 @@ void MapManager::Update(const Camera& camera, Renderer& renderer)
 	// 나중에 렌더거리 변했을 때도 넣어주기 if (camera.IsChangedRenderDistance())
 	if (IsMovedChunkPosition(camera)) 
 	{
-		Logger::LogLine("청크 포지션 바뀜");
+		LOG(LogSink::Console, LogLevel::Info, "청크 포지션 바뀜");
 		UpdateChunkStreaming(camera, renderer);
 	}
 }
