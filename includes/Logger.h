@@ -2,6 +2,7 @@
 #include <stdarg.h>
 #include <iostream>
 #include <fstream>
+#include <filesystem>
 
 using std::ostream;
 
@@ -24,7 +25,8 @@ enum class LogLevel
 class Logger
 {
 public:
-	Logger() = default;
+	Logger();
+	~Logger();
 	Logger(const Logger& ohter) = delete;
 	Logger& operator=(const Logger& rhs) = delete;
 
@@ -39,6 +41,10 @@ public:
 
 private:
 	static constexpr uint32_t MAX_FILES = 3;
+	static constexpr uint32_t MB = 1024 * 1024;
+
+	uint32_t mCurrentFile;
+	std::filesystem::path mDirectoryPath;
 	std::ofstream mFiles[MAX_FILES];
 };
 

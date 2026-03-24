@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include <cassert>
 #include <chrono>
 #include <ctime> 
 #include <iomanip> 
@@ -7,15 +8,37 @@
 #include "Types.h"
 #include "Logger.h"
 
+#include "PathUtils.h"
+
+
+Logger::Logger()
+    : mCurrentFile(0)
+    , mDirectoryPath(PathUtils::GetProjectRoot() / "Logs")
+{
+    // 없으면 알아서 false 반환
+    std::filesystem::create_directories(mDirectoryPath);
+}
+
+Logger::~Logger()
+{
+    for (uint32_t i = 0; i < MAX_FILES; ++i)
+    {
+        if (mFiles[i].is_open())
+        {
+            mFiles[i].close();
+        }
+    }
+}
+
 void Logger::Log(LogSink output, LogLevel level, const char* format, ...)
 {
+    assert(level != LogLevel::Size);
 #ifndef _DEBUG
     if (level == LogLevel::Debug)
     {
         return;
     }
 #endif
-
     char buffer[1024];
 
     va_list args;
@@ -33,7 +56,29 @@ void Logger::Log(LogSink output, LogLevel level, const char* format, ...)
         }
         else if (output == LogSink::File)
         {
-            // 파일은 미구현
+            const char* fileName[MAX_FILES] = { "log1.txt", "log2.txt", "log3.txt" };
+
+            std::filesystem::path filePath = mDirectoryPath / fileName[mCurrentFile];
+            if (mFiles[mCurrentFile].is_open() == false)
+            {
+                mFiles[mCurrentFile].open(filePath, std::ios::out | std::ios::trunc);
+            }
+
+            Write(mFiles[mCurrentFile], level, buffer);
+ 
+            uintmax_t size = std::filesystem::file_size(filePath);
+            if (size > MB)
+            {
+                // MB 넘어가면 다음파일로
+                // root에서 log 디렉토리 남겨야 함
+                mFiles[mCurrentFile].close();
+                mCurrentFile = (mCurrentFile + 1) % MAX_FILES;
+            }
+
+            if (static_cast<uint32_t>(level) >= static_cast<uint32_t>(LogLevel::Error))
+            {
+                mFiles[mCurrentFile].flush();
+            }
         }
     }
 }
