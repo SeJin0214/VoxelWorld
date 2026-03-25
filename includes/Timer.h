@@ -1,5 +1,5 @@
-#pragma once
-#include <Windows.h>
+﻿#pragma once
+#include <chrono>
 #include "Types.h"
 
 class Timer
@@ -17,15 +17,12 @@ public:
 	int32_t GetFPS() const { return static_cast<int32_t>(1.0 / mDeltaTime); }
 
 private:
-	double mSecondsPerCount;
-	
-	LARGE_INTEGER mPrevTime;
-	LARGE_INTEGER mCurrTime;
-	LARGE_INTEGER mFrequency;
+	// std::chrono::steady_clock의 별칭
+	using Clock = std::chrono::steady_clock;
 
-	LARGE_INTEGER mSectionStart;
-
+	Clock::time_point mPrevTime;
 	double mDeltaTime;
 
-
 };
+
+

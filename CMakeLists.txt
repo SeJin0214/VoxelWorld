@@ -2,7 +2,7 @@
 
 set(PROJECT_NAME VoxelWorld)
 
-project(${PROJECT_NAME} CXX)
+project(${PROJECT_NAME} LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -10,14 +10,12 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 set(SRC_DIR src)
 set(INC_DIR includes)
-set(IMGUI_DIR third_party/imgui)
-set(IMGUI_INC_DIR third_party/imgui)
-set(XTK_DIR third_party/directxtk)
-set(GLFW_DIR third_party/glfw)
-set(GLM_DIR third_party/glm)
-
-# PDB 
-set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>")
+set(THIRD_PART_DIR third_party)
+set(IMGUI_DIR ${THIRD_PART_DIR}/imgui)
+set(IMGUI_INC_DIR ${THIRD_PART_DIR}/imgui)
+set(GLFW_DIR ${THIRD_PART_DIR}/glfw)
+set(GLM_DIR ${THIRD_PART_DIR}/glm)
+set(GLAD_DIR ${THIRD_PART_DIR}/glad)
 
 set(SRCS
 	${SRC_DIR}/AdaptiveRenderDistanceController.cpp
@@ -35,6 +33,7 @@ set(SRCS
 	${SRC_DIR}/MapManager.cpp
 	${SRC_DIR}/MeshBuilder.cpp
 	${SRC_DIR}/PathUtils.cpp
+	${SRC_DIR}/Platform.cpp
 	${SRC_DIR}/Renderer.cpp
 	${SRC_DIR}/RuntimeConfig.cpp
 	${SRC_DIR}/ScreenManager.cpp
@@ -50,31 +49,43 @@ set(IMGUI_SRCS
 	${IMGUI_DIR}/imgui.cpp
 	${IMGUI_DIR}/imgui_demo.cpp
 	${IMGUI_DIR}/imgui_draw.cpp
-	${IMGUI_DIR}/imgui_impl_dx11.cpp
-	${IMGUI_DIR}/imgui_impl_win32.cpp
+	${IMGUI_DIR}/imgui_impl_glfw.cpp
+	${IMGUI_DIR}/imgui_impl_opengl3.cpp
 	${IMGUI_DIR}/imgui_tables.cpp
 	${IMGUI_DIR}/imgui_widgets.cpp
 )
 
-if (EXISTS ${CMAKE_SOURCE_DIR}/${GLFW_DIR}/CMakeLists.txt)
-	set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
-	set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
-	set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-	add_subdirectory(${GLFW_DIR})
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${GLFW_DIR}/CMakeLists.txt)
+	message(FATAL_ERROR "GLFW was not found. Run installer/Linux/install_glfw.sh first.")
 endif()
 
-add_executable(${PROJECT_NAME} WIN32 ${SRCS} ${IMGUI_SRCS})
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${GLM_DIR}/glm/glm.hpp)
+	message(FATAL_ERROR "GLM was not found. Run installer/Linux/install_glm.sh first.")
+endif()
+
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${GLAD_DIR}/cmake/CMakeLists.txt)
+	message(FATAL_ERROR "glad was not found. Run installer/Linux/install_opengl.sh first.")
+endif()
+
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${IMGUI_DIR}/imgui_impl_glfw.cpp)
+	message(FATAL_ERROR "ImGui GLFW/OpenGL3 backend was not found. Install imgui with glfw + opengl3.")
+endif()
+
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+
+add_subdirectory(${GLFW_DIR})
+add_subdirectory(${GLAD_DIR}/cmake glad_cmake)
+
+find_package(OpenGL REQUIRED)
+glad_add_library(glad_gl_core_33 REPRODUCIBLE API gl:core=3.3)
+
+add_executable(${PROJECT_NAME} ${SRCS} ${IMGUI_SRCS})
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	${INC_DIR}
 	${IMGUI_INC_DIR}
-	${XTK_DIR}/Inc
 	${GLM_DIR}
-)
-
-target_link_directories(${PROJECT_NAME} PRIVATE
-    $<$<CONFIG:Debug>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Debug>
-    $<$<CONFIG:Release,RelWithDebInfo>:${CMAKE_SOURCE_DIR}/${XTK_DIR}/out/lib/Release>
-
 )
 
 target_link_options(${PROJECT_NAME} PRIVATE
@@ -82,12 +93,9 @@ target_link_options(${PROJECT_NAME} PRIVATE
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    DirectXTK
+    glad_gl_core_33
     glfw
-    d3d11
-    d3dcompiler
-    dxgi
-    user32
+    OpenGL::GL
 )
 
 # 전처리기
@@ -103,4 +111,5 @@ if(ENABLE_AUTOMATION_TEST)
 		ENABLE_AUTOMATION_TEST=1
 	)
 endif()
+
 

@@ -1,50 +1,48 @@
-#include "Timer.h"
+﻿#include "Timer.h"
 #include <cmath>
-#include <iostream>
-#include <string>
+#include <thread>
 
 Timer::Timer()
 	: mDeltaTime(0.0)
 {
-	QueryPerformanceFrequency(&mFrequency);
-
 	Reset();
-
-	mSecondsPerCount = 1.0 / static_cast<double>(mFrequency.QuadPart);
 }
 
 void Timer::Reset()
 {
-	QueryPerformanceCounter(&mCurrTime);
-	mPrevTime = mCurrTime;
+	// Reset 시점의 기준 시간
+	mPrevTime = Clock::now();
 }
 
 void Timer::Tick()
 {
-	QueryPerformanceCounter(&mCurrTime);
-	mDeltaTime = fmax((mCurrTime.QuadPart - mPrevTime.QuadPart) * mSecondsPerCount, 0.0);
-
 	const int targetFPS = 120;
 	const double targetFrameTime = 1.0 / targetFPS;
 
-	double elapsedTime = 0.0;
+	// now -> monotonic 시간 주는 거
+	Clock::time_point currTime = Clock::now();
+	// duration -> 틱을 초단위로 변경함
+	double elapsedTime = std::chrono::duration<double>(currTime - mPrevTime).count();
 
 	while (elapsedTime < targetFrameTime)
 	{
-		QueryPerformanceCounter(&mCurrTime);
-		elapsedTime = (mCurrTime.QuadPart - mPrevTime.QuadPart) * mSecondsPerCount;
-		Sleep(0);
+		// 표준 라이브러리 기반으로 잠깐 대기
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		currTime = Clock::now();
+		elapsedTime = std::chrono::duration<double>(currTime - mPrevTime).count();
 	}
 
-	mDeltaTime = elapsedTime;
-	mPrevTime = mCurrTime;
+	// 작은 음수가 들어올 때도 있음 (가끔)
+	mDeltaTime = std::fmax(elapsedTime, 0.0);
+	mPrevTime = currTime;
 }
 
 double Timer::GetMonotonicSeconds() const
 {
-    LARGE_INTEGER monotonicSeconds;
-    QueryPerformanceCounter(&monotonicSeconds);
-    return static_cast<double>(monotonicSeconds.QuadPart) * mSecondsPerCount;
+	// 내부 기준점 시간에서 얼마나 흘렀는지 time_since_epoch 절대 시간 반환 
+	return std::chrono::duration<double>(Clock::now().time_since_epoch()).count();
 }
+
+
 
 

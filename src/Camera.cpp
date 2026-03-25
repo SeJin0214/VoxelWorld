@@ -20,13 +20,11 @@ Camera::Camera(const Vector3 position, const Vector3 rotation)
 
 void Camera::Update(const InputManager& inputManager, const float deltaTime, MapManager& mapManager)
 {
-	CameraInput input
-	{
-		input.KeyboardMovement = inputManager.GetKeyboardMovement(),
-		input.MouseMovement = inputManager.GetMouseMovement(),
-		input.bIsLeftButtonDown = inputManager.IsLeftButtonDown(),
-		input.bShouldChangedSpeed = inputManager.ShouldChangedSpeed(),
-	};
+	CameraInput input{};
+	input.KeyboardMovement = inputManager.GetKeyboardMovement();
+	input.MouseMovement = inputManager.GetMouseMovement();
+	input.bIsLeftButtonDown = inputManager.IsLeftButtonDown();
+	input.bShouldChangedSpeed = inputManager.ShouldChangedSpeed();
 	Update(input, deltaTime, mapManager);
 }
 
@@ -112,6 +110,7 @@ float Camera::GetCurrentSpeed() const
 	assert(0 <= mSpeedLevel && mSpeedLevel < MAX_LEVEL);
 	return SPEEDS[mSpeedLevel];
 }
+
 
 
 

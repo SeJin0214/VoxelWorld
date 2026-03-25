@@ -1,8 +1,7 @@
-#include "PathUtils.h"
+﻿#include "PathUtils.h"
+#include "Platform.h"
 
-#include <array>
 #include <cassert>
-#include <windows.h>
 
 namespace
 {
@@ -36,15 +35,7 @@ namespace PathUtils
 {
 	std::filesystem::path GetExecutableDirectory()
 	{
-		wchar_t modulePath[MAX_PATH] = {};
-		const DWORD length = GetModuleFileNameW(nullptr, modulePath, MAX_PATH);
-		if (length == 0 || length == MAX_PATH)
-		{
-			assert(false && "Failed to resolve executable path.");
-			return {};
-		}
-
-		return NormalizePath(std::filesystem::path(modulePath).parent_path());
+		return NormalizePath(Platform::GetExecutableDirectory());
 	}
 
 	std::filesystem::path GetProjectRoot()
@@ -81,5 +72,6 @@ namespace PathUtils
 		return NormalizePath(GetProjectRoot() / "shaders" / relativePath);
 	}
 }
+
 
 
