@@ -10,7 +10,7 @@ project_root="$(cd "$script_dir/../.." && pwd)"
 repo_url="https://github.com/ocornut/imgui.git"
 temp_root="$(mktemp -d)"
 temp_path="$temp_root/imgui"
-dest_path="$project_root/third_party/imgui"
+dest_path="$project_root/third_party/imgui_linux"
 backend_source="$temp_path/backends"
 
 platform_cpp="imgui_impl_${platform}.cpp"
