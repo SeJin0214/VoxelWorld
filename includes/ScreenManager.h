@@ -10,8 +10,8 @@ public:
 	static uint32_t GetWindowHeight() { return HEIGHT; }
 
 	void CreateHWND(WCHAR windowClass[], WCHAR title[], HINSTANCE hInstance);
-
 	HWND GetHWND() const { return mHwnd; }
+
 	float GetClientAreaAspectRatio() const { return static_cast<float>(mClientWidth) / mClientHeight; }
 	uint32_t GetClientWidth() const { return mClientWidth; }
 	uint32_t GetClientHeight() const { return mClientHeight; }

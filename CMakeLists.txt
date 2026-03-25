@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+ï»¿cmake_minimum_required(VERSION 3.21)
 
 set(PROJECT_NAME VoxelWorld)
 
@@ -13,6 +13,8 @@ set(INC_DIR includes)
 set(IMGUI_DIR third_party/imgui)
 set(IMGUI_INC_DIR third_party/imgui)
 set(XTK_DIR third_party/directxtk)
+set(GLFW_DIR third_party/glfw)
+set(GLM_DIR third_party/glm)
 
 # PDB 
 set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "$<$<CONFIG:Debug,RelWithDebInfo>:ProgramDatabase>")
@@ -54,11 +56,19 @@ set(IMGUI_SRCS
 	${IMGUI_DIR}/imgui_widgets.cpp
 )
 
+if (EXISTS ${CMAKE_SOURCE_DIR}/${GLFW_DIR}/CMakeLists.txt)
+	set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+	set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+	set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+	add_subdirectory(${GLFW_DIR})
+endif()
+
 add_executable(${PROJECT_NAME} WIN32 ${SRCS} ${IMGUI_SRCS})
 target_include_directories(${PROJECT_NAME} PRIVATE 
 	${INC_DIR}
 	${IMGUI_INC_DIR}
 	${XTK_DIR}/Inc
+	${GLM_DIR}
 )
 
 target_link_directories(${PROJECT_NAME} PRIVATE
@@ -73,13 +83,14 @@ target_link_options(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     DirectXTK
+    glfw
     d3d11
     d3dcompiler
     dxgi
     user32
 )
 
-# ÀüÃ³¸®±â
+# ì „ì²˜ë¦¬ê¸°
 target_compile_definitions(${PROJECT_NAME} PRIVATE
     $<$<CONFIG:Debug>:_DEBUG>
     $<$<CONFIG:RelWithDebInfo,Debug>:PROFILE>
@@ -92,3 +103,4 @@ if(ENABLE_AUTOMATION_TEST)
 		ENABLE_AUTOMATION_TEST=1
 	)
 endif()
+
