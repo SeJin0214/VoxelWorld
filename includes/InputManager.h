@@ -1,37 +1,30 @@
 #pragma once
-#include <Keyboard.h>
-#include <Mouse.h>
-#include <memory>
-#include <SimpleMath.h>
-
-using namespace DirectX;
-using namespace DirectX::SimpleMath;
+#include <GLFW/glfw3.h>
+#include "Types.h"
 
 class InputManager
 {
-
 public:
-	InputManager();
+	InputManager(GLFWwindow* window);
 	InputManager(const InputManager& other) = delete;
 	InputManager& operator=(const InputManager& rhs) = delete;
 	~InputManager() = default;
 
-	bool Update();
-	Vector3 GetMouseMovement() const { return mMouseMovement; }
+	bool Update(GLFWwindow* window);
 	Vector3 GetKeyboardMovement() const { return mKeyboardMovement; }
+	Vector2 GetMouseMovement() const { return mMouseMovement; }
 	bool IsMoved() const { return mbIsMoved; }
 	bool IsLeftButtonDown() const { return mbIsLeftButtonDown; }
 	bool ShouldChangedSpeed() const { return mbShouldChangedSpeed; }
 
 private:
-	std::unique_ptr<Keyboard> mKeyboard;
-	std::unique_ptr<Mouse> mMouse;
-	Keyboard::KeyboardStateTracker mKeyboardTracker;
-	Mouse::ButtonStateTracker mMouseTracker;
 	Vector3 mKeyboardMovement;
-	Vector3 mMouseMovement;
+	Vector2 mMouseMovement;
+	double mPrevMouseX;
+	double mPrevMouseY;
 	
 	bool mbIsMoved;
 	bool mbIsLeftButtonDown;
 	bool mbShouldChangedSpeed;
+	bool mbIsPrevPressed;
 };

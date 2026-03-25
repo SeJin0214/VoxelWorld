@@ -1,7 +1,6 @@
 #pragma once
 #include "Camera.h"
 #include "Types.h"
-#include <SimpleMath.h>
 
 class TestRunner
 {

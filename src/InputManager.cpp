@@ -1,102 +1,96 @@
-#include <Windows.h>
 #include "InputManager.h"
 #include "Logger.h"
 #include "ScreenManager.h"
 
-InputManager::InputManager()
-	: mKeyboard(std::make_unique<Keyboard>())
-	, mMouse(std::make_unique<Mouse>())
-	, mKeyboardTracker{}
-	, mMouseTracker{}
-	, mbIsMoved(false)
+InputManager::InputManager(GLFWwindow* window)
+	: mbIsMoved(false)
 	, mbIsLeftButtonDown(false)
 	, mbShouldChangedSpeed(false)
+	, mbIsPrevPressed(false)
 {
-	mMouse->SetWindow(ScreenManager::GetInstance().GetHWND());
-	mMouse->SetMode(Mouse::MODE_RELATIVE);
+	glfwGetCursorPos(window, &mPrevMouseX, &mPrevMouseY);
 }
 
-bool InputManager::Update()
+bool InputManager::Update(GLFWwindow* window)
 {
 	mbIsMoved = false;
 	mbIsLeftButtonDown = false;
 	mbShouldChangedSpeed = false;
 
-	mKeyboardMovement = Vector3::Zero;
-	Keyboard::State state = mKeyboard->GetState();
+	mKeyboardMovement = Vector3(0.f, 0.f, 0.f);
 
-	mKeyboardTracker.Update(state);
-
-	if (state.Escape)
+	if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
 	{
 		return false;
-		//Logger::Log("Z Å° ´©¸£´Â Áß - ¾Æ·¡·Î ÀÌµ¿!\n");
 	}
 
-	if (state.W)
+	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 	{
 		mKeyboardMovement.z += 1.f;
-		//Logger::Log("W Å° ´©¸£´Â Áß - ¾ÕÀ¸·Î ÀÌµ¿!");
 	}
 
-	if (state.S)
+	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
 		mKeyboardMovement.z -= 1.f;
-		//Logger::Log("S Å° ´©¸£´Â Áß - µÚ·Î ÀÌµ¿!\n");
+		//Logger::Log("S Å° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ - ï¿½Ú·ï¿½ ï¿½Ìµï¿½!\n");
 	}
 
-	if (state.A)
+	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
 		mKeyboardMovement.x -= 1.f;
-		//Logger::Log("A Å° ´©¸£´Â Áß - ¿ÞÂÊÀ¸·Î ÀÌµ¿!\n");
+		//Logger::Log("A Å° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½!\n");
 	}
 
-	if (state.D)
+	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
 		mKeyboardMovement.x += 1.f;
-		//Logger::Log("D Å° ´©¸£´Â Áß - ¿À¸¥ÂÊÀ¸·Î ÀÌµ¿!\n");
+		//Logger::Log("D Å° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½!\n");
 	}
 
-	if (state.Q)
+	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 	{
 		mKeyboardMovement.y += 1.f;
-		//Logger::Log("Q Å° ´©¸£´Â Áß - À§·Î ÀÌµ¿!\n");
+		//Logger::Log("Q Å° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ - ï¿½ï¿½ï¿½ï¿½ ï¿½Ìµï¿½!\n");
 	}
 
-	if (state.Z)
+	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
 	{
 		mKeyboardMovement.y -= 1.f;
-		//Logger::Log("Z Å° ´©¸£´Â Áß - ¾Æ·¡·Î ÀÌµ¿!\n");
+		//Logger::Log("Z Å° ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ - ï¿½Æ·ï¿½ï¿½ï¿½ ï¿½Ìµï¿½!\n");
 	}
 
-	if (mKeyboardTracker.pressed.LeftShift)
+	// Pressë¡œ ë³€ê²½í•˜ê¸°
+	bool bIsPressed = glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS;
+	if (bIsPressed && mbIsPrevPressed == false)
 	{
 		mbShouldChangedSpeed = true;
 	}
+	mbIsPrevPressed = bIsPressed;
 
-	if (mKeyboardMovement != Vector3::Zero)
+	if (glm::length(mKeyboardMovement) > 0.f)
 	{
 		mbIsMoved = true;
-		mKeyboardMovement.Normalize();
+		mKeyboardMovement = glm::normalize(mKeyboardMovement);
 	}
 
-	mMouseMovement = Vector3::Zero;
-	Mouse::State mouseState = mMouse->GetState();
+	double mouseX = 0.0;
+	double mouseY = 0.0;
+	glfwGetCursorPos(window, &mouseX, &mouseY);
 	
-	mMouseMovement.x = static_cast<float>(mouseState.x);
-	mMouseMovement.y = static_cast<float>(mouseState.y);
-	mMouseMovement.z = 0.0f; // ÈÙ °ª µîÀ» ÀúÀåÇÒ ¼öµµ ÀÖÀ½
+	mMouseMovement.x = static_cast<float>(mouseX - mPrevMouseX);
+	mMouseMovement.y = static_cast<float>(mouseY - mPrevMouseY);
+	mPrevMouseX = mouseX;
+	mPrevMouseY = mouseY;
 
-	if (mMouseMovement != Vector3::Zero)
+	if (glm::length(mMouseMovement) > 0.f)
 	{
 		mbIsMoved = true;
 	}
 
-	//Logger::Log("¸¶¿ì½º ÀÌµ¿ x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
-	mMouseTracker.Update(mouseState);
-	if (mMouseTracker.leftButton == Mouse::ButtonStateTracker::PRESSED) 
+	//Logger::Log("ï¿½ï¿½ï¿½ì½º ï¿½Ìµï¿½ x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
+	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 	{
-		LOG(LogSink::Console, LogLevel::Info, "¸¶¿ì½º Å¬¸¯");
+		LOG(LogSink::Console, LogLevel::Info, "ï¿½ï¿½ï¿½ì½º Å¬ï¿½ï¿½");
 		mbIsLeftButtonDown = true;
 	}
 	return true;

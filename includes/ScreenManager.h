@@ -1,6 +1,6 @@
 #pragma once
-#include <windows.h>
 #include "Types.h"
+#include <GLFW/glfw3.h>
 
 class ScreenManager
 {
@@ -9,8 +9,9 @@ public:
 	static uint32_t GetWindowWidth() { return WIDTH; }
 	static uint32_t GetWindowHeight() { return HEIGHT; }
 
-	void CreateHWND(WCHAR windowClass[], WCHAR title[], HINSTANCE hInstance);
-	HWND GetHWND() const { return mHwnd; }
+	bool CreateGlfwWindow(const char* name);
+	void DestoryGlfwWindow();
+	GLFWwindow* GetWindows() const { return mWindow; }
 
 	float GetClientAreaAspectRatio() const { return static_cast<float>(mClientWidth) / mClientHeight; }
 	uint32_t GetClientWidth() const { return mClientWidth; }
@@ -22,7 +23,7 @@ private:
 	static const uint32_t WIDTH = 1680;
 	static const uint32_t HEIGHT = 1024;
 
-	HWND mHwnd;
+	GLFWwindow* mWindow;
 	uint32_t mClientWidth;
 	uint32_t mClientHeight;
 

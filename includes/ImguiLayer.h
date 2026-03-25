@@ -1,15 +1,12 @@
 #pragma once
 
-#include <windows.h>
 #include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx11.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
 
 struct ImGuiLayerDesc
 {
-	HWND HWnd;
-	ID3D11Device* Device;
-	ID3D11DeviceContext* DeviceContext;
+	GLFWwindow* Window;
 };
 
 class ImGuiLayer

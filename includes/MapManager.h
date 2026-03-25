@@ -1,11 +1,8 @@
 #pragma once
-#include <SimpleMath.h>
 #include "Chunk.h"
 #include "ChunkInfo.h"
 #include "Types.h"
 #include "MeshBuilder.h"
-
-using namespace DirectX::SimpleMath;
 
 class Camera;
 class Chunk;
@@ -38,9 +35,9 @@ private:
 		MEMORY_POOL_SIZE = 16384
 	};
 
-	std::unordered_map<ChunkKey, int32_t> mChunks; // Å½»ö¿ë
-	std::vector<ChunkInfo> mUsedChunks; // »ç¿ëÁßÀÎ ¾Öµé, ¼øÈ¸¿ë
-	std::vector<int32_t> mFreePool; // ¸Þ¸ð¸® Ç®
+	std::unordered_map<ChunkKey, int32_t> mChunks; // Å½ï¿½ï¿½ï¿½ï¿½
+	std::vector<ChunkInfo> mUsedChunks; // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Öµï¿½, ï¿½ï¿½È¸ï¿½ï¿½
+	std::vector<int32_t> mFreePool; // ï¿½Þ¸ï¿½ Ç®
 	Chunk* mChunkArray;
 	IVector3 mLastChunkPosition;
 	StreamingPolicy& mStreamingPolicy;

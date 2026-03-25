@@ -1,8 +1,6 @@
 ﻿#pragma once
-#include <SimpleMath.h>
 #include <cstdint>
-
-using namespace DirectX::SimpleMath;
+#include "Types.h"
 
 class MapManager;
 class InputManager;

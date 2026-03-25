@@ -6,26 +6,27 @@ ImGuiLayer::ImGuiLayer(ImGuiLayerDesc& layerDesc)
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 
-	ImGui_ImplWin32_Init(layerDesc.HWnd);
-	ImGui_ImplDX11_Init(layerDesc.Device, layerDesc.DeviceContext);
+	// 넣기
+	ImGui_ImplOpenGL3_Init( );
+	ImGui_ImplGlfw_InitForOpenGL(layerDesc.Window, )
 }
 
 ImGuiLayer::~ImGuiLayer()
 {
-	ImGui_ImplDX11_Shutdown();
-	ImGui_ImplWin32_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui_ImplOpenGL3_Shutdown();
 	ImGui::DestroyContext();
 }
 
 void ImGuiLayer::BeginFrame()
 {
-	ImGui_ImplDX11_NewFrame();
-	ImGui_ImplWin32_NewFrame();
+	ImGui_ImplGlfw_NewFrame();
+	ImGui_ImplOpenGL3_NewFrame();
 	ImGui::NewFrame();
 }
 
 void ImGuiLayer::Render()
 {
 	ImGui::Render();
-	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 }

@@ -1,6 +1,5 @@
 ﻿#include <algorithm>
 #include <string>
-#include <DirectXMath.h>
 #include "Camera.h"
 #include "ScreenManager.h"
 #include "MapManager.h"
@@ -31,7 +30,7 @@ void Camera::Update(const InputManager& inputManager, const float deltaTime, Map
 void Camera::Update(const CameraInput& input, const float deltaTime, MapManager& mapManager)
 {
 	Vector3 position = input.KeyboardMovement;
-	Vector3 mouseMovement = input.MouseMovement;
+	Vector3 mouseMovement = Vector3(input.MouseMovement.x, input.MouseMovement.y, 0.f);
 
 	mbTransformDirty = true;
 	if (position != Vector3::Zero || mouseMovement != Vector3::Zero)

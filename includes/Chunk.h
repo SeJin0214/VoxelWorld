@@ -4,10 +4,6 @@
 #include "WorldConfig.h"
 #include "BlockType.h"
 
-using namespace DirectX::SimpleMath;
-
-
-
 class Chunk
 {
 public:

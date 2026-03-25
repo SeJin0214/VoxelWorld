@@ -1,8 +1,6 @@
-#pragma once
-#include <SimpleMath.h>
+ï»¿#pragma once
 #include <cstdint>
-
-using namespace DirectX::SimpleMath;
+#include <glm/vec3.hpp>
 
 struct IVector3 
 {
@@ -10,7 +8,7 @@ struct IVector3
     int32_t y;
     int32_t z;
 
-    // static_assert »ç¿ëÇÏ±â À§ÇÔ
+    // static_assert ì‚¬ìš©í•˜ê¸° ìœ„í•¨
     constexpr IVector3(const int32_t _x = 0, const int32_t _y = 0, const int32_t _z = 0) : x(_x), y(_y), z(_z) {}
     IVector3(const float _x, const float _y, const float _z)
         : x(static_cast<int32_t>(_x))
@@ -19,7 +17,7 @@ struct IVector3
     {
 
     }
-    IVector3(const Vector3 v)
+    IVector3(const glm::vec3& v)
         : x(static_cast<int32_t>(v.x))
         , y(static_cast<int32_t>(v.y))
         , z(static_cast<int32_t>(v.z))
@@ -30,7 +28,7 @@ struct IVector3
 
 
 
-    // ¸ÊÀÇ Key·Î ¾²±â À§ÇÑ ºñ±³ ¿¬»êÀÚ
+    // ë§µì˜ Keyë¡œ ì“°ê¸° ìœ„í•œ ë¹„êµ ì—°ì‚°ì
     
     bool operator!=(const IVector3& other) const { return x != other.x || y != other.y || z != other.z; }
     constexpr bool operator==(const IVector3& other) const { return x == other.x && y == other.y && z == other.z; }
