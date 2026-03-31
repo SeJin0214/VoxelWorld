@@ -1,5 +1,5 @@
 #pragma once
-#include <GLFW/glfw3.h>
+#include "GLPlatform.h"
 #include "Types.h"
 
 class InputManager

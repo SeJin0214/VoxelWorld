@@ -1,31 +1,32 @@
-#include "ImGuiLayer.h"
+#include "ImguiLayer.h"
 
-ImGuiLayer::ImGuiLayer(ImGuiLayerDesc& layerDesc)
+ImguiLayer::ImguiLayer(ImguiLayerDesc& layerDesc)
 {
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
 	ImGui::StyleColorsDark();
 
 	// 넣기
-	ImGui_ImplOpenGL3_Init( );
-	ImGui_ImplGlfw_InitForOpenGL(layerDesc.Window, )
+	ImGui_ImplOpenGL3_Init(layerDesc.Version);
+	// true로 해야 GLFW 키 입력을 Imgui가 자동으로 인식함
+	ImGui_ImplGlfw_InitForOpenGL(layerDesc.Window, true);
 }
 
-ImGuiLayer::~ImGuiLayer()
+ImguiLayer::~ImguiLayer()
 {
 	ImGui_ImplGlfw_Shutdown();
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui::DestroyContext();
 }
 
-void ImGuiLayer::BeginFrame()
+void ImguiLayer::BeginFrame()
 {
 	ImGui_ImplGlfw_NewFrame();
 	ImGui_ImplOpenGL3_NewFrame();
 	ImGui::NewFrame();
 }
 
-void ImGuiLayer::Render()
+void ImguiLayer::Render()
 {
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

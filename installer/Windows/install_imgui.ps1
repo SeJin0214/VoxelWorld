@@ -1,4 +1,4 @@
-﻿param(
+param(
     [Parameter(Mandatory = $false)]
     [ValidateSet("win32", "glfw")]
     [string]$platform = "win32",
@@ -48,14 +48,24 @@ $coreFiles = @(
     "imstb_truetype.h"
 )
 
+$backendFiles = @(
+    $platformCpp,
+    $platformH,
+    $graphicCpp,
+    $graphicH
+)
+
+if ($graphic -eq "opengl3") {
+    $backendFiles += "imgui_impl_opengl3_loader.h"
+}
+
 foreach ($file in $coreFiles) {
     Copy-Item (Join-Path $tempPath $file) $destPath -Force
 }
 
-Copy-Item (Join-Path $backendSource $platformCpp) $destPath -Force
-Copy-Item (Join-Path $backendSource $platformH) $destPath -Force
-Copy-Item (Join-Path $backendSource $graphicCpp) $destPath -Force
-Copy-Item (Join-Path $backendSource $graphicH) $destPath -Force
+foreach ($file in $backendFiles) {
+    Copy-Item (Join-Path $backendSource $file) $destPath -Force
+}
 
 Remove-Item $tempPath -Recurse -Force
 

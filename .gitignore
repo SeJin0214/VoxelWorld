@@ -420,3 +420,5 @@ FodyWeavers.xsd
 # Third-party libraries
 third_party/
 *.ini
+
+*.codex

@@ -1,4 +1,4 @@
-﻿#include "PathUtils.h"
+#include "PathUtils.h"
 #include "Platform.h"
 
 #include <cassert>

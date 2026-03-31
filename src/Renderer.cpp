@@ -1,14 +1,17 @@
+#include <algorithm>
 #include <cassert>
-#include <wrl/client.h>
 #include <iostream>
 #include <cmath>
 #include <vector>
 #include <limits>
+#include "glad/gl.h"
+
+#include "glm/ext/matrix_transform.hpp" // Ìï≠Îì±ÌñâÎ†¨
+#include "glm/gtx/euler_angles.hpp" // ÌöåÏ†ÑÌñâÎ†¨
+#include "glm/gtx/transform.hpp" // Ïù¥ÎèôÌñâÎ†¨
 
 #include "Renderer.h"
 #include "WVPMatrix.h"
-#include "DirectXMath.h"
-#include "WICTextureLoader.h"   // png/jpg/bmp µÓ (WIC)
 #include "ScreenManager.h"
 #include "MapManager.h"
 #include "TextureManager.h"
@@ -17,78 +20,63 @@
 #include "Logger.h"
 #include "PathUtils.h"
 #include "Timer.h"
-#include "ScopedProfiler.h"
 #include "ChunkMath.h"
 #include "StreamingPolicy.h"
 #include "JobScheduler.h"
+#include "Frustum.h"
 
-using namespace DirectX;
-
-Renderer::Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, JobScheduler& jobScheduler, StreamingPolicy& streamingPolicy)
-	: mDevice(deviceBundle.Device)
-	, mDeviceContext(deviceBundle.DeviceContext)
-	, mSwapChain(deviceBundle.SwapChain)
-	, mViewport(deviceBundle.Viewport)
-	, mFrameBuffer(gpuResourceService.CreateFrameBuffer(deviceBundle.SwapChain.Get()))
-	, mRenderTargetView(gpuResourceService.CreateRenderTargetView(mFrameBuffer.Get()))
-	, mDepthBuffer(gpuResourceService.CreateDepthBuffer(ScreenManager::GetInstance().GetClientWidth(), ScreenManager::GetInstance().GetClientHeight()))
-	, mDepthView(gpuResourceService.CreateDepthStencilView(mDepthBuffer.Get()))
-	, mDepthState(gpuResourceService.CreateDepthStencilState())
-	, mRaterizerState(gpuResourceService.CreateRaterizerState())
-	, mVertexShader(gpuResourceService.CreateVertexShader(gpuResourceService.CompileVertexShader(PathUtils::GetShaderPath("Shader.hlsl")).Get()))
-	, mPixelShader(gpuResourceService.CreatePixelShader(gpuResourceService.CompilePixelShader(PathUtils::GetShaderPath("Shader.hlsl")).Get()))
-	, mInputLayout(gpuResourceService.CreateInputLayout(gpuResourceService.CompileVertexShader(PathUtils::GetShaderPath("Shader.hlsl")).Get()))
-	, mConstantBuffer(gpuResourceService.CreateDynamicConstantBuffer(sizeof(WVPMatrix)))
-	, mSamplerState(gpuResourceService.CreateSamplerState())
-	, mPipelineQuery(gpuResourceService.CreatePipelineStatisticsQuery())
+Renderer::Renderer(GLFWwindow* window, GPUResourceService& gpuResourceService, TextureManager& textureManager, JobScheduler& jobScheduler, StreamingPolicy& streamingPolicy)
+	: mWindow(window)
+	, mShaderProgram(gpuResourceService.CreateProgramForRenderer())
+	, mConstantBuffer(gpuResourceService.CreateDynamicConstantBufferGL(sizeof(WVPMatrix)))
 	, mGPUResourceService(gpuResourceService)
 	, mTextureManager(textureManager)
 	, mJobScheduler(jobScheduler)
 	, mStreamingPolicy(streamingPolicy)
 	, mSkyBox(gpuResourceService, textureManager)
 {
-	assert(mDevice != nullptr && mDeviceContext != nullptr && mSwapChain != nullptr);
+	
 }
 
 void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& mapManager)
 {
 	BeginFrame();
-
-	//mDeviceContext->Begin(mPipelineQuery.Get());
-
 	const std::vector<ChunkInfo>& usedChunks = mapManager.GetUsedChunks();
 
-	// GetWorldFrustum¿∏∑Œ ªÃæ∆≥ª¿⁄, ∑ª¥ı∑Øø°º≠ 
-	BoundingFrustum frustum;
-	BoundingFrustum::CreateFromMatrix(frustum, camera.GetProjectionMatrix());
-
-	XMMATRIX viewMat = camera.GetViewMatrix();
-	XMVECTOR det;
-	XMMATRIX invView = XMMatrixInverse(&det, viewMat); // ƒ´∏ﬁ∂Ûø°º≠ ªÃæ∆øÕµµ µ»¥Ÿ.
-
-	BoundingFrustum frustumWorld;
-	frustum.Transform(frustumWorld, invView);
+	mDrawMeshs = 0;
+	// ÌîÑÎü¨Ïä§ÌÖÄ ÏàòÏ†ï
+	Frustum frustum(camera.GetViewProjectionMatrix());
 
 	UpdateConstantBuffer(camera, Vector3(0.f, 0.f, 0.f));
 
 	for (uint32_t i = 0; i < usedChunks.size(); ++i)
 	{
-		// usedChunks[i] ∞°¡ˆ∞Ì frustum ƒ√∏µ ∆«¥‹«œ±‚
+		// usedChunks[i] ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ frustum ÔøΩ√∏ÔøΩ ÔøΩ«¥ÔøΩÔøΩœ±ÔøΩ
 		const Chunk& chunk = mapManager.GetChunk(usedChunks[i]);
 		IVector3 chunkPosition = chunk.GetChunkPosition();
 
-		// «‘ºˆ∑Œ π≠±‚ 
-		BoundingBox aabb;
-		BoundingBox::CreateFromPoints(aabb,
-			XMVECTOR{ static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z) },
-			XMVECTOR{ static_cast<float>(chunkPosition.x + 16), static_cast<float>(chunkPosition.y + 16), static_cast<float>(chunkPosition.z + 16) });
+		// ÔøΩ‘ºÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ 
+		// BoundingBox aabb;
+		// BoundingBox::CreateFromPoints(aabb,
+		// 	XMVECTOR{ static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z) },
+		// 	XMVECTOR{ static_cast<float>(chunkPosition.x + 16), static_cast<float>(chunkPosition.y + 16), static_cast<float>(chunkPosition.z + 16) });
 
-		if (frustumWorld.Contains(aabb) == DirectX::DISJOINT)
+		Vector3 minPos = Vector3(
+			static_cast<float>(chunkPosition.x), 
+			static_cast<float>(chunkPosition.y), 
+			static_cast<float>(chunkPosition.z));
+		Vector3 maxPos = Vector3(
+			static_cast<float>(chunkPosition.x + WorldConfig::CHUNK_SIZE), 
+			static_cast<float>(chunkPosition.y + WorldConfig::CHUNK_SIZE), 
+			static_cast<float>(chunkPosition.z + WorldConfig::CHUNK_SIZE));
+		AABB aabb{ minPos, maxPos };
+
+		if (frustum.IntersectsFrustum(aabb) == false)
 		{
 			continue;
 		}
 
-		if (chunk.IsEmpty()) // πŸ∑Œ ∆«¥‹ ∞°¥…
+		if (chunk.IsEmpty()) // ÔøΩŸ∑ÔøΩ ÔøΩ«¥ÔøΩ ÔøΩÔøΩÔøΩÔøΩ
 		{
 			continue;
 		}
@@ -96,7 +84,7 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 		ChunkKey key = ChunkMath::ToChunkKey(chunkPosition);
 		if (chunk.IsDirty())
 		{
-			// πŸ≤Ô ∞« «— π¯ π€ø° æ» µÈæÓø¬¥Ÿ.
+			// ÔøΩŸ≤ÔøΩ ÔøΩÔøΩ ÔøΩÔøΩ ÔøΩÔøΩ ÔøΩ€øÔøΩ ÔøΩÔøΩ ÔøΩÔøΩÔøΩ¬¥ÔøΩ.
 			RequestChunkMeshBuild(key);
 			mapManager.ClearDirty(key);
 		}
@@ -107,11 +95,11 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 		}
 
 		ChunkMesh& chunkMesh = mChunkMeshes[key];
-		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
-		//++drawCallCount;
+		mGPUResourceService.BindVAO(chunkMesh.VAO);
+		Render(chunkMesh.VertexBuffer.Buffer, chunkMesh.IndexBuffer.Buffer, chunkMesh.IndexCount);
+		++mDrawMeshs;
 	}
 
-	//timer.StartSection();
 	constexpr uint32_t MAX_CREATE_COUNT_PER_FRAME = 20;
 	ProcessBufferCreationQueue(MAX_CREATE_COUNT_PER_FRAME);
 
@@ -121,89 +109,132 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 	constexpr uint32_t MESH_MAX_CREATE_COUNT_PER_FRAME = 4;
 	ProcessMeshCreation(MESH_MAX_CREATE_COUNT_PER_FRAME, cameraChunkPos, mapManager);
 
-
-	mSkyBox.BeginFrame(mDeviceContext.Get(), camera);
-	mSkyBox.Draw(mDeviceContext.Get());
-
+	mSkyBox.BeginFrame(mWindow, camera);
+	mSkyBox.Draw(mWindow);
 
 	//mVertexBufferPool.printBufferSize();
-	
-	
-	//mDeviceContext->End(mPipelineQuery.Get());
-
-	//D3D11_QUERY_DATA_PIPELINE_STATISTICS stats;
-	//while (mDeviceContext->GetData(mPipelineQuery.Get(), &stats, sizeof(D3D11_QUERY_DATA_PIPELINE_STATISTICS), 0) == S_FALSE)
-	//{
-	//	Sleep(0);
-	//}
-	
-	//LogPipelineState(stats, drawCallCount, deltaTime);
 }
 
 void Renderer::Present()
 {
-	mSwapChain->Present(1, 0);
-	//mSwapChain->Present(0, 0);
+	// mSwapChain->Present(1, 0); Îûë ÎåÄÏùë
+	glfwSwapBuffers(mWindow);
 }
 
-void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount)
+#ifdef _DEBUG
+uint32_t Renderer::GetCreatedVAOCount() const
 {
-	const UINT stride[2] = { VERTEX_BYTE, sizeof(Vector3) };
-	const UINT offset[2] = { 0, 0 };
-	ID3D11Buffer* buffers[2] = { vertexBuffer, instanceBuffer };
-	mDeviceContext->OMSetRenderTargets(1, mRenderTargetView.GetAddressOf(), mDepthView.Get());
-	mDeviceContext->OMSetDepthStencilState(mDepthState.Get(), 1);
-	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-
-	mDeviceContext->IASetVertexBuffers(0, 2, buffers, stride, offset);
-	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-
-	// (¿Œµ¶Ω∫ ºˆ, ¿ŒΩ∫≈œΩ∫ ºˆ, Ω√¿€ ¿Œµ¶Ω∫, Ω√¿€ πˆ≈ÿΩ∫, Ω√¿€ ¿ŒΩ∫≈œΩ∫)
-	mDeviceContext->DrawIndexedInstanced(indexCount, instanceCount, 0, 0, 0);
-	//mDeviceContext->DrawIndexed(indexCount, 0, 0);
+	return mGPUResourceService.GetDebugResourceStats().CreatedVAOs;
 }
 
-void Renderer::Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount)
+uint32_t Renderer::GetDeletedVAOCount() const
 {
-	const UINT stride = VERTEX_BYTE;
-	const UINT offset = 0;
+	return mGPUResourceService.GetDebugResourceStats().DeletedVAOs;
+}
 
-	mDeviceContext->IASetVertexBuffers(0, 1, &vertexBuffer, &stride, &offset);
-	mDeviceContext->IASetIndexBuffer(indexBuffer, DXGI_FORMAT_R32_UINT, 0);
-	mDeviceContext->DrawIndexed(indexCount, 0, 0);
+uint32_t Renderer::GetAliveVAOCount() const
+{
+	return GetCreatedVAOCount() - GetDeletedVAOCount();
+}
+
+uint32_t Renderer::GetCreatedBufferCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().CreatedBuffers;
+}
+
+uint32_t Renderer::GetDeletedBufferCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().DeletedBuffers;
+}
+
+uint32_t Renderer::GetAliveBufferCount() const
+{
+	return GetCreatedBufferCount() - GetDeletedBufferCount();
+}
+
+uint32_t Renderer::GetCreatedTextureCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().CreatedTextures;
+}
+
+uint32_t Renderer::GetDeletedTextureCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().DeletedTextures;
+}
+
+uint32_t Renderer::GetAliveTextureCount() const
+{
+	return GetCreatedTextureCount() - GetDeletedTextureCount();
+}
+
+uint32_t Renderer::GetCreatedProgramCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().CreatedPrograms;
+}
+
+uint32_t Renderer::GetDeletedProgramCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().DeletedPrograms;
+}
+
+uint32_t Renderer::GetAliveProgramCount() const
+{
+	return GetCreatedProgramCount() - GetDeletedProgramCount();
+}
+
+uint32_t Renderer::GetCreatedShaderCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().CreatedShaders;
+}
+
+uint32_t Renderer::GetDeletedShaderCount() const
+{
+	return mGPUResourceService.GetDebugResourceStats().DeletedShaders;
+}
+
+uint32_t Renderer::GetAliveShaderCount() const
+{
+	return GetCreatedShaderCount() - GetDeletedShaderCount();
+}
+#endif
+
+void Renderer::Render(GLuint vertexBuffer, GLuint indexBuffer, uint32_t indexCount)
+{
+	// MeshÎ•º Î∞õÏïÑÏÑú Í∑∏ÎÉ• DrawÎßå Ìò∏Ï∂ú
+	// VAO GenÏùÄ Ïó¨Í∏∞ÏÑú ÌïòÍ∏∞  
+
+	mGPUResourceService.BindBuffer(BufferType::Vertex, vertexBuffer);
+	mGPUResourceService.BindBuffer(BufferType::Index, indexBuffer);
+	glDrawElements(GL_TRIANGLES, indexCount, GL_UNSIGNED_INT, 0);
 }
 
 void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position)
 {
-	XMMATRIX world = XMMatrixScaling(1.f, 1.f, 1.f) * XMMatrixRotationRollPitchYaw(0.f, 0.f, 0.f) * XMMatrixTranslation(position.x, position.y, position.z);
-	XMMATRIX viewProj = camera.GetViewProjectionMatrix();
-	XMMATRIX wvp = world * viewProj;
+	Matrix scale = glm::identity<Matrix>();
+	Matrix rotate = glm::yawPitchRoll(0.f, 0.f, 0.f); // radianÏúºÎ°ú ÎÑ£Ïñ¥Ïïº Ìï®
+	Matrix translation = glm::translate(glm::vec3(position.x, position.y, position.z));
 
+	Matrix world = translation * rotate * scale;
+	Matrix viewProj = camera.GetViewProjectionMatrix();
 	WVPMatrix cb{};
-	XMStoreFloat4x4(&cb.WorldViewProj, XMMatrixTranspose(wvp)); // ¡ﬂø‰
+	cb.WorldViewProj = viewProj * world;
 
-	D3D11_MAPPED_SUBRESOURCE mappedResource;
-	mDeviceContext->Map(mConstantBuffer.Get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-	memcpy(mappedResource.pData, &cb, sizeof(WVPMatrix));
-	mDeviceContext->Unmap(mConstantBuffer.Get(), 0);
-
-	//mDeviceContext->UpdateSubresource(mConstantBuffer, 0, nullptr, &cb, 0, 0);
-
-
+	mGPUResourceService.UpdateDynamicBufferMapped(BufferType::Constant, mConstantBuffer, sizeof(WVPMatrix), &cb);
 }
 
-// ∞¸∏Æ«ÿæﬂ «œ¥¬ ∏Ò∑œ
+// ÔøΩÔøΩÔøΩÔøΩÔøΩÿæÔøΩ ÔøΩœ¥ÔøΩ ÔøΩÔøΩÔøΩ
 // 1. mChunkMeshes
-// 2. ≥ª∫Œ¿« πˆ∆€µÈ π›»Ø
+// 2. ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩ€µÔøΩ ÔøΩÔøΩ»Ø
 // 3. 
 void Renderer::OnDisableChunk(const ChunkKey key)
 {
-	// √ª≈©ø° ∫Ì∑œ¿Ã æ¯¥¬ ∞ÊøÏø£ ƒ≥Ω√∏¶ ∞Æ∞Ì ¿÷¡ˆ æ ¥Ÿ.
+	// √ª≈©ÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÏø£ ƒ≥ÔøΩ√∏ÔøΩ ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩÔøΩ ÔøΩ ¥ÔøΩ.
 	if (mChunkMeshes.contains(key) == false)
 	{
 		return;
 	}
 	ChunkMesh& mesh = mChunkMeshes[key];
+	mGPUResourceService.ReleaseVAO(mesh.VAO);
 	if (mesh.VertexBuffer.Class != PoolClass::None)
 	{
 		assert(mesh.VertexBuffer.Class != PoolClass::Size);
@@ -219,56 +250,62 @@ void Renderer::OnDisableChunk(const ChunkKey key)
 
 void Renderer::Create()
 {
-	assert(mDevice != nullptr);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	// Î∑∞Ìè¨Ìä∏ ÏãúÏûëÏ†ê(Í∑∏ÎÉ• 0, 0 Í≥†Ï†ï)
+	glViewport(0, 0, GetWindowWidthW(), GetWindowHeightW());
 	CreateBufferPool();
-}
-
-void Renderer::BeginFrame()
-{
-	const float clearColor[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
-
-	mDeviceContext->ClearRenderTargetView(mRenderTargetView.Get(), clearColor);
-	mDeviceContext->ClearDepthStencilView(mDepthView.Get(), D3D11_CLEAR_DEPTH | D3D11_CLEAR_STENCIL, 1.0f, 0);
-
-	mDeviceContext->OMSetRenderTargets(1, mRenderTargetView.GetAddressOf(), mDepthView.Get());
-	mDeviceContext->OMSetDepthStencilState(mDepthState.Get(), 1);
-	mDeviceContext->OMSetBlendState(nullptr, nullptr, 0xffffffff);
-
-	// SkyBox ∂ßπÆø° BeginFrame¿∏∑Œ
-	mDeviceContext->RSSetState(mRaterizerState.Get());
-
-	mDeviceContext->IASetInputLayout(mInputLayout.Get());
-
-	mDeviceContext->VSSetShader(mVertexShader.Get(), nullptr, 0);
-	mDeviceContext->PSSetShader(mPixelShader.Get(), nullptr, 0);
-
-	mDeviceContext->PSSetSamplers(0, 1, mSamplerState.GetAddressOf());
-
-	mDeviceContext->PSSetShaderResources(0, 1, mTextureManager.GetBlockAtlasSRV().GetAddressOf());
-
-	// b0∑Œ πŸ¿Œµ˘ (HLSL register(b0)øÕ ∏¬√Áæﬂ «‘)
-	mDeviceContext->VSSetConstantBuffers(0, 1, mConstantBuffer.GetAddressOf());
 }
 
 void Renderer::SetupStaticPipelineState()
 {
-	mDeviceContext->RSSetViewports(1, &mViewport);
-	mDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	glDisable(GL_BLEND); // ColorBlend Î™ÖÏãúÏ†ÅÏúºÎ°ú ÎÅÑÍ∏∞
+
+	// GLSLÏóê ÏûàÎäî CBPerObjectÎ•º 0Î≤à Ïä¨Î°ØÏóê Î∞îÏù∏Îî©
+	GLuint blockIndex = glGetUniformBlockIndex(mShaderProgram, "CBPerObject");
+	glUniformBlockBinding(mShaderProgram, blockIndex, 0);
+
+	mGPUResourceService.BindProgram(mShaderProgram);
+	GLint loc = glGetUniformLocation(mShaderProgram, "gTex");
+	glUniform1i(loc, 0);
+
+	glClearDepth(1.0f);
+	// const float clearColor[4] = { 0.025f, 0.025f, 0.025f, 1.0f };
+	glClearColor(0.025f, 0.025f, 0.025f, 1.0f);
+
+	glEnable(GL_DEPTH_TEST);
+
+	// Rasterizer
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 }
 
-ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
+void Renderer::BeginFrame()
 {
-	ComPtr<ID3D11Buffer> instanceBuffer = mGPUResourceService.CreateDynamicInstanceBuffer(byteWidth, sizeof(Vector3));
-	return instanceBuffer.Detach();
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glDepthFunc(GL_LESS);
+	glDepthMask(GL_TRUE);
+
+	glEnable(GL_CULL_FACE);
+	glFrontFace(GL_CCW);
+
+	// SkyBox ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ BeginFrameÔøΩÔøΩÔøΩÔøΩ
+	SetRasterizerState();
+	mGPUResourceService.BindConstantBufferBase(0, mConstantBuffer);
+	mGPUResourceService.BindProgram(mShaderProgram);
+	mGPUResourceService.BindTexture(mTextureManager.GetBlockAtlas());
 }
 
+
+void Renderer::SetRasterizerState()
+{
+	glCullFace(GL_BACK);
+}
 
 void Renderer::Release()
 {
-	assert(mDevice != nullptr);
-
-	mDeviceContext->ClearState();
-	mDeviceContext->Flush();
+	ReleaseCompletedBuildResults();
+	DestoryBufferPool();
+	mGPUResourceService.ReleaseProgram(mShaderProgram);
+	mGPUResourceService.ReleaseBuffer(mConstantBuffer);
 }
 
 void Renderer::CreateBufferPool()
@@ -286,14 +323,64 @@ void Renderer::CreateBufferPool()
 	}
 }
 
+void Renderer::DestoryBufferPool()
+{
+	while (mDeferredVertexBufferCreationQueue.empty() == false)
+	{
+		mDeferredVertexBufferCreationQueue.pop();
+	}
+	while (mDeferredIndexBufferCreationQueue.empty() == false)
+	{
+		mDeferredIndexBufferCreationQueue.pop();
+	}
+
+	for (auto& [key, mesh] : mChunkMeshes)
+	{
+		mGPUResourceService.ReleaseVAO(mesh.VAO);
+		if (mesh.VertexBuffer.Buffer != 0)
+		{
+			mGPUResourceService.ReleaseBuffer(mesh.VertexBuffer.Buffer);
+			mesh.VertexBuffer.Class = PoolClass::None;
+		}
+		if (mesh.IndexBuffer.Buffer != 0)
+		{
+			mGPUResourceService.ReleaseBuffer(mesh.IndexBuffer.Buffer);
+			mesh.IndexBuffer.Class = PoolClass::None;
+		}
+	}
+	mChunkMeshes.clear();
+
+	for (uint32_t i = 0; i < BufferPool::GetPoolClassCount(); ++i)
+	{
+		const PoolClass poolClass = static_cast<PoolClass>(i);
+		PooledBuffer buffer{};
+		while (mVertexBufferPool.SpawnBuffer(poolClass, buffer))
+		{
+			mGPUResourceService.ReleaseBuffer(buffer.Buffer);
+			buffer.Class = PoolClass::None;
+		}
+	}
+
+	for (uint32_t i = 0; i < BufferPool::GetPoolClassCount(); ++i)
+	{
+		const PoolClass poolClass = static_cast<PoolClass>(i);
+		PooledBuffer buffer{};
+		while (mIndexBufferPool.SpawnBuffer(poolClass, buffer))
+		{
+			mGPUResourceService.ReleaseBuffer(buffer.Buffer);
+			buffer.Class = PoolClass::None;
+		}
+	}
+}
+
 void Renderer::AllocateMoreAtVertexPool(const PoolClass poolClass)
 {
 	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
-	ComPtr<ID3D11Buffer> vertexBuffer = mGPUResourceService.CreateDynamicVertexBuffer(BufferPool::GetByte(poolClass));
+	GLuint vertexBuffer = mGPUResourceService.CreateDynamicBuffer(BufferType::Vertex, BufferPool::GetByte(poolClass));
 
 	PooledBuffer vb;
 	vb.Class = poolClass;
-	vb.Buffer = std::move(vertexBuffer);
+	vb.Buffer = vertexBuffer;
 	mVertexBufferPool.DespawnBuffer(vb);
 }
 
@@ -302,18 +389,18 @@ void Renderer::AllocateMoreAtIndexPool(const PoolClass poolClass)
 	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
 
 	const SizeClass* sizeClasses = BufferPool::GetBufferSizeClasses();
-	ComPtr<ID3D11Buffer> indexBuffer = mGPUResourceService.CreateDynamicIndexBuffer(BufferPool::GetByte(poolClass));
+	GLuint indexBuffer = mGPUResourceService.CreateDynamicBuffer(BufferType::Index, BufferPool::GetByte(poolClass));
 
 	PooledBuffer ib;
 	ib.Class = poolClass;
-	ib.Buffer = std::move(indexBuffer);
+	ib.Buffer = indexBuffer;
 	mIndexBufferPool.DespawnBuffer(ib);
 }
 
 void Renderer::ProcessBufferCreationQueue(const uint32_t maxCreateCountPerFrame)
 {
-	uint32_t indexCount = min(static_cast<uint32_t>(mDeferredIndexBufferCreationQueue.size()), 10);
-	uint32_t vertexCount = min(static_cast<uint32_t>(mDeferredVertexBufferCreationQueue.size()), maxCreateCountPerFrame - indexCount);
+	uint32_t indexCount = std::min(static_cast<uint32_t>(mDeferredIndexBufferCreationQueue.size()), 10u);
+	uint32_t vertexCount = std::min(static_cast<uint32_t>(mDeferredVertexBufferCreationQueue.size()), maxCreateCountPerFrame - indexCount);
 	assert(vertexCount <= maxCreateCountPerFrame);
 
 	uint32_t i = 0;
@@ -362,7 +449,7 @@ void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, const 
 
 	uint32_t i = 0;
 	uint32_t j = 0;
-	uint32_t MAX_LOOP = min(100, mPendingUploads.size());
+	uint32_t MAX_LOOP = std::min(100u, static_cast<uint32_t>(mPendingUploads.size()));
 	while (i < maxCreateCountPerFrame && j < MAX_LOOP && !mPendingUploads.empty())
 	{
 		++j;
@@ -385,7 +472,7 @@ void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, const 
 			continue;
 		}
 
-		// ø©±‚ µÈæÓø‘¥Ÿ∏∏ ∏∂∂•»˜ ±◊∑¡æﬂ «œ¥¬ ∞ÕµÈ
+		// ÔøΩÔøΩÔøΩÔøΩ ÔøΩÔøΩÔøΩ‘¥Ÿ∏ÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩÔøΩ ÔøΩ◊∑ÔøΩÔøΩÔøΩ ÔøΩœ¥ÔøΩ ÔøΩÕµÔøΩ
 		if (TryUploadMesh(meshBuildState))
 		{
 			++i;
@@ -404,7 +491,7 @@ bool Renderer::TryUploadMesh(ChunkMeshBuildState meshBuildState)
 	ChunkKey key = meshBuildState.Mesh->Key;
 	MeshData* needMesh = meshBuildState.Mesh;
 
-	// ø©±‚º≠∫Œ≈Õ ∏ﬁΩ√∏¶ ª˝º∫«—¥Ÿ.
+	// ÔøΩÔøΩÔøΩ‚º≠ÔøΩÔøΩÔøΩÔøΩ ÔøΩﬁΩ√∏ÔøΩ ÔøΩÔøΩÔøΩÔøΩÔøΩ—¥ÔøΩ.
 	ChunkMesh& existingMesh = mChunkMeshes[key];
 	constexpr uint32_t MAX_BUFFER_WAIT_FRAMES = 10;
 	bool shouldRequestMoreBuffers = meshBuildState.WaitingForBufferFrameCount % MAX_BUFFER_WAIT_FRAMES == 0;
@@ -433,7 +520,7 @@ bool Renderer::TryUploadMesh(ChunkMeshBuildState meshBuildState)
 		return false;
 	}
 
-	// ø©±‚∞° æ˜∑ŒµÂ ∑Œ¡˜
+	// ÔøΩÔøΩÔøΩ‚∞° ÔøΩÔøΩÔøΩŒµÔøΩ ÔøΩÔøΩÔøΩÔøΩ
 	assert((bNeedResizeVertex == false || mVertexBufferPool.IsExhaustedPool(needVertexPoolClass) == false)
 		&& (bNeedResizeIndex == false || mIndexBufferPool.IsExhaustedPool(needIndexPoolClass) == false));
 
@@ -455,12 +542,39 @@ bool Renderer::TryUploadMesh(ChunkMeshBuildState meshBuildState)
 		mIndexBufferPool.SpawnBuffer(needIndexPoolClass, existingMesh.IndexBuffer);
 	}
 
-	existingMesh.VertexCount = static_cast<UINT>(needMesh->Vertices.size());
-	existingMesh.IndexCount = static_cast<UINT>(needMesh->Indices.size());
+	existingMesh.VertexCount = static_cast<uint32_t>(needMesh->Vertices.size());
+	existingMesh.IndexCount = static_cast<uint32_t>(needMesh->Indices.size());
 
-	assert(existingMesh.VertexBuffer.Buffer != nullptr && existingMesh.IndexBuffer.Buffer != nullptr);
+	assert(existingMesh.VertexBuffer.Buffer != 0 && existingMesh.IndexBuffer.Buffer != 0);
 
-	mGPUResourceService.UpdateDynamicBuffer(existingMesh.VertexBuffer.Buffer.Get(), needMesh->Vertices.data(), static_cast<size_t>(existingMesh.VertexCount) * VERTEX_BYTE);
-	mGPUResourceService.UpdateDynamicBuffer(existingMesh.IndexBuffer.Buffer.Get(), needMesh->Indices.data(), static_cast<size_t>(existingMesh.IndexCount) * INDEX_BYTE);
+	bool bShouldCreated = existingMesh.VAO == 0; 
+	if (bShouldCreated)
+	{
+		existingMesh.VAO = mGPUResourceService.CreateVAO();
+		mGPUResourceService.BindVAO(existingMesh.VAO);
+	}
+	mGPUResourceService.UpdateDynamicBufferMapped(BufferType::Vertex, existingMesh.VertexBuffer.Buffer,  
+		static_cast<size_t>(existingMesh.VertexCount) * VERTEX_BYTE, needMesh->Vertices.data());
+	mGPUResourceService.UpdateDynamicBufferMapped(BufferType::Index, existingMesh.IndexBuffer.Buffer,  
+		static_cast<size_t>(existingMesh.IndexCount) * INDEX_BYTE, needMesh->Indices.data());
+	if (bShouldCreated)
+	{
+		mGPUResourceService.BindInputLayoutForRenderer();
+	}
 	return true;
+}
+
+void Renderer::ReleaseCompletedBuildResults()
+{
+	while (mCompletedBuildResults.empty() == false)
+	{
+		mJobScheduler.ReleaseMeshData(mCompletedBuildResults.front());
+		mCompletedBuildResults.pop();
+	}
+
+	while (mPendingUploads.empty() == false)
+	{
+		mJobScheduler.ReleaseMeshData(mPendingUploads.front().Mesh);
+		mPendingUploads.pop();
+	}
 }

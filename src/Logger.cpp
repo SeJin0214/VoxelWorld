@@ -14,7 +14,7 @@ Logger::Logger()
     : mCurrentFile(0)
     , mDirectoryPath(PathUtils::GetProjectRoot() / "logs")
 {
-    // ¾øÀ¸¸é ¾Ë¾Æ¼­ false ¹ÝÈ¯
+    // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Ë¾Æ¼ï¿½ false ï¿½ï¿½È¯
     std::filesystem::create_directories(mDirectoryPath);
 }
 
@@ -43,7 +43,7 @@ void Logger::Log(LogSink output, LogLevel level, const char* format, ...)
     va_list args;
     va_start(args, format);
     
-    uint32_t length = vsprintf_s(buffer, sizeof(buffer), format, args);
+    uint32_t length = vsprintf(buffer, format, args);
 
     va_end(args);
 
@@ -68,8 +68,8 @@ void Logger::Log(LogSink output, LogLevel level, const char* format, ...)
             uintmax_t size = std::filesystem::file_size(filePath);
             if (size > MB)
             {
-                // MB ³Ñ¾î°¡¸é ´ÙÀ½ÆÄÀÏ·Î
-                // root¿¡¼­ log µð·ºÅä¸® ³²°Ü¾ß ÇÔ
+                // MB ï¿½Ñ¾î°¡ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï·ï¿½
+                // rootï¿½ï¿½ï¿½ï¿½ log ï¿½ï¿½ï¿½ä¸® ï¿½ï¿½ï¿½Ü¾ï¿½ ï¿½ï¿½
                 mFiles[mCurrentFile].close();
                 mCurrentFile = (mCurrentFile + 1) % MAX_FILES;
             }
@@ -84,15 +84,17 @@ void Logger::Log(LogSink output, LogLevel level, const char* format, ...)
 
 void Logger::Write(ostream& os, LogLevel level, const char* buffer)
 {
-    // ³» ÄÄÇ»ÅÍ ½Ã°£ °¡Á®¿À±â
+    // ï¿½ï¿½ ï¿½ï¿½Ç»ï¿½ï¿½ ï¿½Ã°ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
     auto now = std::chrono::system_clock::now();
-
-    // ÇöÀç ·ÎÄÃ ½Ã°£´ë·Î º¯È¯
-    auto now_ms = std::chrono::floor<std::chrono::milliseconds>(now);
+    auto nowTimeT = std::chrono::system_clock::to_time_t(now);
+    std::tm localTime{};
+    
+    localtime_r(&nowTimeT, &localTime);
 
     constexpr uint32_t SIZE = static_cast<uint32_t>(LogLevel::Size);
     const char* prefix[SIZE] = { "[DEBUG]", "[INFO]", "[WARNING]", "[ERROR]", "[CRITICAL]" };
     
-    // Áß°ýÈ£¸¦ ÇÏ¸é °ªÀÌ µé¾î°¨
-    os << std::format("[{:%Y-%m-%d %T}] ", now_ms) << prefix[static_cast<uint32_t>(level)] << " " << buffer << "\n";
+    // ï¿½ß°ï¿½È£ï¿½ï¿½ ï¿½Ï¸ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½î°¨
+    os << "[" << std::put_time(&localTime, "%Y-%m-%d %T") << "] "
+       << prefix[static_cast<uint32_t>(level)] << " " << buffer << "\n";
 }

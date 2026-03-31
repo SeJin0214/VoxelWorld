@@ -1,11 +1,12 @@
 #include <cassert>
+#include <cstdio>
 #include "BufferPool.h"
 
 BufferPool::BufferPool()
 {
 	for (uint32_t i = 0; i < POOL_CLASS_COUNT; ++i)
 	{
-		vector<ComPtr<ID3D11Buffer>> pool;
+		vector<GLuint> pool;
 		pool.reserve(sBufferSizeClasses[i].Capacity);
 
 		mBufferPool.push_back(std::move(pool));
@@ -23,16 +24,18 @@ bool BufferPool::SpawnBuffer(const PoolClass poolClass, PooledBuffer& outBuffer)
 	}
 
 	outBuffer.Class = poolClass;
-	outBuffer.Buffer = std::move(pool.back());
+	outBuffer.Buffer = pool.back();
 	pool.pop_back();
 	return true;
 }
 
 void BufferPool::DespawnBuffer(PooledBuffer& buffer)
 {
-	mBufferPool[static_cast<uint32_t>(buffer.Class)].push_back(std::move(buffer.Buffer));
+	assert(buffer.Class != PoolClass::None && buffer.Class != PoolClass::Size);
+	assert(buffer.Buffer != 0);
+	mBufferPool[static_cast<uint32_t>(buffer.Class)].push_back(buffer.Buffer);
 	buffer.Class = PoolClass::None;
-	assert(buffer.Buffer == nullptr);
+	buffer.Buffer = 0;
 }
 
 uint32_t BufferPool::GetByte(PoolClass poolClass)
@@ -66,7 +69,6 @@ bool BufferPool::IsExhaustedPool(const PoolClass poolClass) const
 	assert(poolClass != PoolClass::None && poolClass != PoolClass::Size);
 	return mBufferPool[static_cast<uint32_t>(poolClass)].empty();
 }
-
 
 void BufferPool::printBufferSize() const
 {

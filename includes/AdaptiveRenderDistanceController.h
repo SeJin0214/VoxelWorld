@@ -33,7 +33,7 @@ private:
 		WorldConfig::DEFAULT_RENDER_DISTANCE
 	};
 
-	static constexpr int32_t LOW_FPS_THRESHOLD = 55;
+	static constexpr int32_t LOW_FPS_THRESHOLD = 30;
 	static constexpr int32_t HIGH_FPS_THRESHOLD = 85;
 
 	int32_t mCurrentLevel;

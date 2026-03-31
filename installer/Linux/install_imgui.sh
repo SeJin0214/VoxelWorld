@@ -32,6 +32,17 @@ core_files=(
     "imstb_truetype.h"
 )
 
+backend_files=(
+    "$platform_cpp"
+    "$platform_h"
+    "$graphic_cpp"
+    "$graphic_h"
+)
+
+if [[ "$graphic" == "opengl3" ]]; then
+    backend_files+=("imgui_impl_opengl3_loader.h")
+fi
+
 cleanup() {
     rm -rf "$temp_root"
 }
@@ -47,9 +58,8 @@ for file in "${core_files[@]}"; do
     cp "$temp_path/$file" "$dest_path/"
 done
 
-cp "$backend_source/$platform_cpp" "$dest_path/"
-cp "$backend_source/$platform_h" "$dest_path/"
-cp "$backend_source/$graphic_cpp" "$dest_path/"
-cp "$backend_source/$graphic_h" "$dest_path/"
+for file in "${backend_files[@]}"; do
+    cp "$backend_source/$file" "$dest_path/"
+done
 
 echo "Installed ImGui with $platform + $graphic"

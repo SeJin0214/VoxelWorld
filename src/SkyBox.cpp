@@ -3,32 +3,36 @@
 #include "TextureManager.h"
 #include "PathUtils.h"
 #include "WVPMatrix.h"
-#include "DirectXMath.h"
 #include "IVector3.h"
 #include "WorldConfig.h"
 
-using namespace DirectX;
-
-std::filesystem::path SkyBox::GetShaderFilePath()
-{
-	return PathUtils::GetShaderPath("SkyBox.hlsl");
-}
+#include "glm/ext/matrix_transform.hpp" // í•­ë“±í–‰ë ¬
+#include "glm/gtx/euler_angles.hpp" // íšŒì „í–‰ë ¬
+#include "glm/gtx/transform.hpp" // ì´ë™í–‰ë ¬
 
 SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureManager)
-	: mGPUResourceService(gpuResourceService)
+	: mVAO(gpuResourceService.CreateVAO())
+	, mGPUResourceService(gpuResourceService)
 	, mTextureManager(textureManager)
-	, mVertexBuffer(gpuResourceService.CreateStaticVertexBuffer(SKYBOX_VERTEX_COUNT * sizeof(Vector3)))
-	, mIndexBuffer(gpuResourceService.CreateStaticIndexBuffer(SKYBOX_INDEX_COUNT * sizeof(uint32_t)))
-	, mConstantBuffer(gpuResourceService.CreateDynamicConstantBuffer(sizeof(WVPMatrix)))
-	, mRasterizerState(gpuResourceService.CreateRaterizerStateForSkyBox())
-	, mDepthStencilState(gpuResourceService.CreateDepthStencilStateForSkyBox())
-	, mSamplerState(gpuResourceService.CreateSamplerStateForSkyBox())
-	, mVertexShader(gpuResourceService.CreateVertexShader(gpuResourceService.CompileVertexShader(GetShaderFilePath()).Get()))
-	, mPixelShader(gpuResourceService.CreatePixelShader(gpuResourceService.CompilePixelShader(GetShaderFilePath()).Get()))
-	, mInputLayout(gpuResourceService.CreateInputLayoutForSkyBox(gpuResourceService.CompileVertexShader(GetShaderFilePath()).Get()))
+	, mVertexBuffer(gpuResourceService.CreateStaticBuffer(BufferType::Vertex, SKYBOX_VERTEX_COUNT * sizeof(Vector3)))
+	, mIndexBuffer(gpuResourceService.CreateStaticBuffer(BufferType::Index, SKYBOX_INDEX_COUNT * sizeof(uint32_t)))
+	, mConstantBuffer(gpuResourceService.CreateDynamicConstantBufferGL(sizeof(WVPMatrix)))
+	, mShaderProgram(gpuResourceService.CreateProgramForSkybox())
 {
-	// RasterizerState¿¡¼­ CullMode¸¦ Front·Î ¼³Á¤ÇØ¾ß ÇÏ´Â µ¥ÀÌÅÍ
-	// Å¥ºê ¹öÅØ½º µ¥ÀÌÅÍ (Á¤Á¡ 8°³)
+
+	mGPUResourceService.BindVAO(mVAO);
+	mGPUResourceService.BindBuffer(BufferType::Vertex, mVertexBuffer);
+	mGPUResourceService.BindInputLayoutForSkybox();
+
+	GLuint blockIndex = glGetUniformBlockIndex(mShaderProgram, "CBPerObject");
+	glUniformBlockBinding(mShaderProgram, blockIndex, 0);
+
+	mGPUResourceService.BindProgram(mShaderProgram);
+	GLint loc = glGetUniformLocation(mShaderProgram, "gTex");
+	glUniform1i(loc, 0);
+
+	// RasterizerStateï¿½ï¿½ï¿½ï¿½ CullModeï¿½ï¿½ Frontï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ø¾ï¿½ ï¿½Ï´ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
+	// Å¥ï¿½ï¿½ ï¿½ï¿½ï¿½Ø½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (ï¿½ï¿½ï¿½ï¿½ 8ï¿½ï¿½)
 	Vector3 vertices[SKYBOX_VERTEX_COUNT] =
 	{
 		{ -1.0f,  1.0f, -1.0f }, // 0  * 
@@ -40,9 +44,9 @@ SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureMa
 		{  1.0f, -1.0f,  1.0f }, // 6
 		{ -1.0f, -1.0f,  1.0f }  // 7
 	};
-	gpuResourceService.UpdateStaticBuffer(mVertexBuffer.Get(), vertices);
+	gpuResourceService.UpdateStaticBufferSubData(BufferType::Vertex, mVertexBuffer, 0, SKYBOX_VERTEX_COUNT * sizeof(Vector3), vertices);
 
-	// Å¥ºê ÀÎµ¦½º µ¥ÀÌÅÍ (12 »ï°¢Çü, 36 ÀÎµ¦½º)
+	// Å¥ï¿½ï¿½ ï¿½Îµï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ (12 ï¿½ï°¢ï¿½ï¿½, 36 ï¿½Îµï¿½ï¿½ï¿½)
 	uint32_t indices[SKYBOX_INDEX_COUNT] =
 	{
 		0, 1, 2, 0, 2, 3, // back face
@@ -52,48 +56,52 @@ SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureMa
 		1, 5, 6, 1, 6, 2, // right face
 		4, 0, 3, 4, 3, 7  // left face
 	};
-	gpuResourceService.UpdateStaticBuffer(mIndexBuffer.Get(), indices);
+	gpuResourceService.UpdateStaticBufferSubData(BufferType::Index, mIndexBuffer, 0, SKYBOX_INDEX_COUNT * sizeof(uint32_t), indices);
 
 }
 
-// ¸®¼Ò½º Á¦°øÀ¸·Î º¯°æÇÏ±â
-void SkyBox::BeginFrame(ID3D11DeviceContext* context, const Camera& camera)
+SkyBox::~SkyBox()
+{
+	mGPUResourceService.ReleaseProgram(mShaderProgram);
+	mGPUResourceService.ReleaseBuffer(mVertexBuffer);
+	mGPUResourceService.ReleaseBuffer(mIndexBuffer);
+	mGPUResourceService.ReleaseBuffer(mConstantBuffer);
+	mGPUResourceService.ReleaseVAO(mVAO);
+}
+
+// ï¿½ï¿½ï¿½Ò½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½Ï±ï¿½
+void SkyBox::BeginFrame(GLFWwindow* window, const Camera& camera)
 {
 	WVPMatrix wvpMatrix;
-	// Çà·Ä °è»êÇÏ±â, ¿ùµå´Â Scale, Tr¸¸
-	// FarZ °í·ÁÇØ¼­ ÇÏ±â
-	const float farZ = WorldConfig::FAR_Z * 0.9f;
-	XMMATRIX world = XMMatrixScaling(farZ, farZ, farZ);
-	XMMATRIX view = camera.GetSkyboxViewMatrix();
-	XMMATRIX projection = camera.GetProjectionMatrix();
-	wvpMatrix.WorldViewProj = XMMatrixTranspose(world * view * projection);
-	mGPUResourceService.UpdateDynamicBuffer(mConstantBuffer.Get(), &wvpMatrix, sizeof(wvpMatrix));
-
-
-	// ³ªÁß¿¡ ·»´õ·¯·Î »©´Â °Ô ÁÁÀ» µí
-	const UINT stride = sizeof(Vector3);
-	const UINT offset = 0;
-	context->IASetVertexBuffers(0, 1, mVertexBuffer.GetAddressOf(), &stride, &offset);
-	context->IASetIndexBuffer(mIndexBuffer.Get(), DXGI_FORMAT_R32_UINT, 0);
-	context->IASetInputLayout(mInputLayout.Get());
-
-	context->VSSetConstantBuffers(0, 1, mConstantBuffer.GetAddressOf());
-	context->VSSetShader(mVertexShader.Get(), nullptr, 0);
-
-	context->RSSetState(mRasterizerState.Get());
-
-	context->PSSetShader(mPixelShader.Get(), nullptr, 0);
-	context->PSSetSamplers(0, 1, mSamplerState.GetAddressOf());
+	// Skybox is drawn as a unit cube around the camera and pushed to the far
+	// plane in the vertex shader. Scaling it to farZ clips the cube corners.
+	Matrix world = glm::identity<Matrix>();
+	Matrix view = camera.GetSkyboxViewMatrix();
+	Matrix projection = camera.GetProjectionMatrix();
+	wvpMatrix.WorldViewProj = projection * view * world;
+	mGPUResourceService.UpdateDynamicBufferMapped(BufferType::Constant, mConstantBuffer, sizeof(wvpMatrix), &wvpMatrix);
 	
-	context->PSSetShaderResources(0, 1, mTextureManager.GetSkyBoxSRV().GetAddressOf());
+	glDepthMask(GL_FALSE);
+	glDepthFunc(GL_LEQUAL);
+	glDisable(GL_CULL_FACE);
+	
+	mGPUResourceService.BindVAO(mVAO); // InputLayout ì„¸íŒ… ë˜ì–´ ìžˆìŒ
+	mGPUResourceService.BindBuffer(BufferType::Vertex, mVertexBuffer);
+	mGPUResourceService.BindBuffer(BufferType::Index, mIndexBuffer);
+	mGPUResourceService.BindConstantBufferBase(0, mConstantBuffer);
 
-	context->OMSetDepthStencilState(mDepthStencilState.Get(), 1);
+	mGPUResourceService.BindProgram(mShaderProgram);
+	mGPUResourceService.BindCubemap(mTextureManager.GetSkyboxCubemap());
 }
 
-void SkyBox::Draw(ID3D11DeviceContext* context)
+void SkyBox::Draw(GLFWwindow* window)
 {
-	context->DrawIndexed(SKYBOX_INDEX_COUNT, 0, 0);
+	glDrawElements(GL_TRIANGLES, SKYBOX_INDEX_COUNT, GL_UNSIGNED_INT, 0);
+	glEnable(GL_CULL_FACE);
+	glDepthMask(GL_TRUE);
+	glDepthFunc(GL_LESS);
 }
+
 
 
 

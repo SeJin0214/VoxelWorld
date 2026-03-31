@@ -14,13 +14,15 @@ enum class LogSink
 
 enum class LogLevel
 {
-	Debug,  // µð¹ö±×¿ë
-	Info,   // Á¤º¸¼º
+	Debug,  // ï¿½ï¿½ï¿½ï¿½×¿ï¿½
+	Info,   // ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
 	Warning,
 	Error,
 	Cretical,
 	Size
 };
+
+#define LOG(logSink, logLevel, format, ...) (Logger::GetInstance().Log(logSink, logLevel, format, ##__VA_ARGS__)) // ï¿½ï¿½ï¿½Ú¾ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½Þ¸ï¿½ ï¿½ï¿½ï¿½ï¿½
 
 class Logger
 {
@@ -48,4 +50,3 @@ private:
 	std::ofstream mFiles[MAX_FILES];
 };
 
-#define LOG(logSink, logLevel, format, ...) (Logger::GetInstance().Log(logSink, logLevel, format, ##__VA_ARGS__)) // ÀÎÀÚ¾øÀ¸¸é ÄÞ¸¶ Áö¿ò

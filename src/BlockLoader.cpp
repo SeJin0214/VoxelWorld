@@ -5,7 +5,7 @@
 BlockMaterialTable BlockLoader::Load(const std::filesystem::path& path)
 {
 	(void)path;
-	// ³ªÁß¿¡ JSON ·Î´õ·Î º¯°æÇÏ±â
+	// ë‚˜ì¤‘ì— JSON ë¡œë”ë¡œ ë³€ê²½í•˜ê¸°
 	BlockMaterialTable result;
 
 	result.AtlasSize = 64u;

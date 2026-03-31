@@ -1,4 +1,4 @@
-﻿#pragma once
+#pragma once
 #include <cstdint>
 #include "Types.h"
 
@@ -8,7 +8,7 @@ class InputManager;
 struct CameraInput
 {
 	Vector3 KeyboardMovement;
-	Vector3 MouseMovement;
+	Vector2 MouseMovement;
 	bool bIsLeftButtonDown;
 	bool bShouldChangedSpeed;
 };
@@ -25,11 +25,14 @@ public:
 	Vector3 GetPosition() const { return mPosition; }
 	void SetPosition(const Vector3 position) { mPosition = position; }
 	void SetRotation(const Vector3 rotation) { mRotation = rotation; }
-	Matrix GetSkyboxViewMatrix() const { return mBasis.Invert(); }
+	Matrix GetSkyboxViewMatrix() const { return glm::inverse(mBasis); }
 	Matrix GetViewMatrix() const { return mViewMatrix; }
 	Matrix GetProjectionMatrix() const { return mProjMatrix; }
 	Matrix GetViewProjectionMatrix() const { return mViewProjMatrix; }
-	Vector3 GetForwardDirection() const { return mBasis.Backward(); } // right-handed 를 기준으로 하는 함수
+	Vector3 GetForwardDirection() const { return -Vector3(mBasis[2]); }
+	Vector3 GetRightDirection() const { return Vector3(mBasis[0]); }
+	Vector3 GetUpDirection() const { return Vector3(mBasis[1]); }
+
 	bool HasTransformChanged() const { return mbTransformDirty; }
 	bool IsChangedRenderDistance() const { return false; } // 나중에 구현
 

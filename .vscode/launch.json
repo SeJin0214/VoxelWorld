@@ -1,0 +1,30 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      // 실행 및 디버그 패널에 표시될 디버그 프로필 이름
+      "name": "Debug VoxelWorld (GDB)",
+      "type": "cppdbg",
+      "request": "launch",
+      // CMake preset/build 결과로 생성된 실행 파일 경로
+      "program": "${workspaceFolder}/out/build/x64-Debug/VoxelWorld",
+      "args": [],
+      "stopAtEntry": false,
+      // 프로젝트 루트에서 실행해 상대 경로(에셋 등)가 깨지지 않도록 함
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": false,
+      // Linux에서 GDB 백엔드 사용
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb",
+      "setupCommands": [
+        {
+          // 디버깅 시 STL/컨테이너 표시 개선
+          "description": "Enable pretty-printing",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

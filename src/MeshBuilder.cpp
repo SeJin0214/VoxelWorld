@@ -20,7 +20,7 @@ MeshData* MeshBuilder::Build(const Chunk& chunk)
 	mMeshDataPool.pop();
 	meshData->Vertices.clear();
 	meshData->Indices.clear();
-	// chunkÀÇ ºí·ÏÀÌ airÀÎÁö
+	// chunkì˜ ë¸”ë¡ì´ airì¸ì§€
 
 	constexpr uint32_t size = static_cast<uint32_t>(Direction::Size);
 	constexpr IVector3 dxdydz[size] =

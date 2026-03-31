@@ -1,4 +1,4 @@
-﻿#include "Timer.h"
+#include "Timer.h"
 #include <cmath>
 #include <thread>
 
@@ -12,6 +12,7 @@ void Timer::Reset()
 {
 	// Reset 시점의 기준 시간
 	mPrevTime = Clock::now();
+	mDeltaTime = 0.0;
 }
 
 void Timer::Tick()

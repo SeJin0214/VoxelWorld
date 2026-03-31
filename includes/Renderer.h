@@ -1,11 +1,9 @@
 #pragma once
 
-#include <d3d11.h>
-#include <wrl/client.h>
-#include <memory>
-
 #include <queue>
 #include <unordered_set>
+#include <unordered_map>
+
 
 #include "BlockMeshData.h"
 #include "Camera.h"
@@ -14,14 +12,12 @@
 #include "ChunkInfo.h"
 #include "ChunkMath.h"
 #include "SkyBox.h"
-#include "DeviceFactory.h"
 #include "TextureManager.h"
 #include "MeshData.h"
 
 using std::vector;
 using std::queue;
 using std::unordered_set;
-using Microsoft::WRL::ComPtr;
 
 class MapManager;
 class StreamingPolicy;
@@ -29,9 +25,9 @@ class GPUResourceService;
 class JobScheduler;
 
 
-// Renderer Ã»Å© ¸Þ½Ã Á¤Ã¥
-// 1. MapManager¿¡¼­ °Å¸®¿¡¼­ ¹þ¾î³ª´Â °ÍÀº OnDisableChunk¸¦ È£ÃâÇÑ´Ù.
-// 2. ³»ºÎ¿¡¼­ Mesh¸¦ »ý¼ºÇÒ ¶§, ¾ø¾îÁø °ÍÀº OnDisableChunk¸¦ È£ÃâÇÑ´Ù.
+// Renderer Ã»Å© ï¿½Þ½ï¿½ ï¿½ï¿½Ã¥
+// 1. MapManagerï¿½ï¿½ï¿½ï¿½ ï¿½Å¸ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½î³ªï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ OnDisableChunkï¿½ï¿½ È£ï¿½ï¿½ï¿½Ñ´ï¿½.
+// 2. ï¿½ï¿½ï¿½Î¿ï¿½ï¿½ï¿½ Meshï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½, ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ OnDisableChunkï¿½ï¿½ È£ï¿½ï¿½ï¿½Ñ´ï¿½.
 
 
 
@@ -39,34 +35,49 @@ class JobScheduler;
 class Renderer
 {
 public:
-	Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuResourceService, TextureManager& textureManager, JobScheduler& jobScheduler, StreamingPolicy& streamingPolicy);
+	Renderer(GLFWwindow* window, GPUResourceService& gpuResourceService, TextureManager& textureManager, JobScheduler& jobScheduler, StreamingPolicy& streamingPolicy);
 	void Present();
 	//void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
 	void Update(const Camera& camera, const float deltaTime, MapManager& mapManager);
-	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount, ID3D11Buffer* instanceBuffer, UINT instanceCount);
-	void Render(ID3D11Buffer* vertexBuffer, ID3D11Buffer* indexBuffer, UINT indexCount);
+	void Render(GLuint vertexBuffer, GLuint indexBuffer, uint32_t indexCount);
 
 	void Create();
 	void Release();
 
-	ID3D11Buffer* CreateInstanceBuffer(const UINT byteWidth);
-
-	// ÇÑ ¹ø¸¸ ¼¼ÆÃ
+	// ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	void SetupStaticPipelineState();
 
-	// ¸ÅÇÁ·¹ÀÓ ¼¼ÆÃ
+	// ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	void BeginFrame();
 
-	// ÀÌ°Íµµ µû·Î »©±â
+	// ï¿½Ì°Íµï¿½ ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½
 	void UpdateConstantBuffer(const Camera& camera, const Vector3 position);
 
 	void OnDisableChunk(const ChunkKey key);
 
+	uint32_t GetDrawMeshs() const { return mDrawMeshs; }
 	uint32_t GetBuiltMeshCount() const { return mChunkMeshes.size(); }
 	uint32_t GetPendingUploadsCount() const { return mPendingUploads.size(); }
 
 	void PushCompletedChunkMesh(MeshData* data) { mCompletedBuildResults.push(data); }
 
+#ifdef _DEBUG
+	uint32_t GetCreatedVAOCount() const;
+	uint32_t GetDeletedVAOCount() const;
+	uint32_t GetAliveVAOCount() const;
+	uint32_t GetCreatedBufferCount() const;
+	uint32_t GetDeletedBufferCount() const;
+	uint32_t GetAliveBufferCount() const;
+	uint32_t GetCreatedTextureCount() const;
+	uint32_t GetDeletedTextureCount() const;
+	uint32_t GetAliveTextureCount() const;
+	uint32_t GetCreatedProgramCount() const;
+	uint32_t GetDeletedProgramCount() const;
+	uint32_t GetAliveProgramCount() const;
+	uint32_t GetCreatedShaderCount() const;
+	uint32_t GetDeletedShaderCount() const;
+	uint32_t GetAliveShaderCount() const;
+#endif
 
 	Renderer(const Renderer& other) = delete;
 	Renderer& operator=(const Renderer& rhs) = delete;
@@ -74,8 +85,9 @@ public:
 
 private:
 
-	struct ChunkMesh // Mesh State·Î ºÐ¸®
+	struct ChunkMesh // Mesh Stateï¿½ï¿½ ï¿½Ð¸ï¿½
 	{
+		GLuint VAO;
 		PooledBuffer VertexBuffer;
 		PooledBuffer IndexBuffer;
 		uint32_t VertexCount;
@@ -96,39 +108,16 @@ private:
 
 private:
 	static constexpr uint32_t VERTEX_BYTE = sizeof(BlockVertex);
-	static constexpr uint32_t INDEX_BYTE = sizeof(UINT);
+	static constexpr uint32_t INDEX_BYTE = sizeof(uint32_t);
 
-	ComPtr<ID3D11Device> mDevice;
-	ComPtr<ID3D11DeviceContext> mDeviceContext;
-	ComPtr<IDXGISwapChain> mSwapChain;
-	D3D11_VIEWPORT mViewport;
-
-	ComPtr<ID3D11Texture2D> mFrameBuffer;
-	ComPtr<ID3D11RenderTargetView> mRenderTargetView;
-
-	ComPtr<ID3D11Texture2D> mDepthBuffer;
-	ComPtr<ID3D11DepthStencilView> mDepthView;
-	ComPtr<ID3D11DepthStencilState> mDepthState;
-
-	ComPtr<ID3D11RasterizerState> mRaterizerState;
-
-	ComPtr<ID3D11VertexShader> mVertexShader;
-	ComPtr<ID3D11PixelShader> mPixelShader;
-	ComPtr<ID3D11InputLayout> mInputLayout;
-
-	ComPtr<ID3D11Buffer> mConstantBuffer;
-
-	ComPtr<ID3D11SamplerState> mSamplerState;
-
-	ComPtr<ID3D11Buffer> mDebugRayVertexBuffer;
-	ComPtr<ID3D11Query> mPipelineQuery;
-
-
-
+	GLFWwindow* mWindow;
+	GLuint mConstantBuffer;
+	GLuint mShaderProgram;
 
 	// Meshs
 	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshes;
-
+	uint32_t mDrawMeshs;
+	void SetRasterizerState();
 
 
 private:
@@ -149,23 +138,20 @@ private:
 	void ProcessBufferCreationQueue(const uint32_t maxCreateCountPerFrame);
 
 	void CreateBufferPool();
+	void DestoryBufferPool();
 	void AllocateMoreAtVertexPool(const PoolClass poolClass);
 	void AllocateMoreAtIndexPool(const PoolClass poolClass);
 	void EnqueueVertexBufferCreation(const PoolClass poolClass);
 	void EnqueueIndexBufferCreation(const PoolClass poolClass);
 
-
-
 private:
 	queue<MeshData*> mCompletedBuildResults;
 	queue<ChunkMeshBuildState> mPendingUploads;
 
-
 	bool TryUploadMesh(ChunkMeshBuildState meshBuildState);
 	void RequestChunkMeshBuild(const ChunkKey key);
 	void ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, const IVector3 cameraChunkPos, MapManager& mapManager);
-
-
+	void ReleaseCompletedBuildResults();
 
 };
 

@@ -1,0 +1,107 @@
+{
+   mesa-egl-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/libEGL_mesa.so*
+   ...
+}
+
+{
+   mesa-glx-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/libGLX_mesa.so*
+   ...
+}
+
+{
+   wsl-dxcore-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/libdxcore.so*
+   ...
+}
+
+{
+   wsl-d3d12core-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/libd3d12core.so*
+   ...
+}
+
+{
+   amd-driver-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/amdxc64.so*
+   ...
+}
+
+{
+   swrast-driver-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/swrast_dri.so*
+   ...
+}
+
+{
+   llvm-runtime-leaks
+   Memcheck:Leak
+   match-leak-kinds: definite,indirect,possible,reachable
+   ...
+   obj:*/libLLVM-15.so.1*
+   ...
+}
+
+{
+   wsl-egl-driver-invalid-write-1
+   Memcheck:Addr1
+   ...
+   obj:*/amdxc64.so*
+   obj:*/libd3d12core.so*
+   obj:*/libd3d12.so*
+   obj:*/swrast_dri.so*
+   obj:*/libEGL_mesa.so*
+   fun:_glfwCreateContextEGL
+   fun:_glfwCreateWindowWayland
+   fun:glfwCreateWindow
+   ...
+}
+
+{
+   wsl-egl-driver-invalid-write-4
+   Memcheck:Addr4
+   ...
+   obj:*/amdxc64.so*
+   obj:*/libd3d12core.so*
+   obj:*/libd3d12.so*
+   obj:*/swrast_dri.so*
+   obj:*/libEGL_mesa.so*
+   fun:_glfwCreateContextEGL
+   fun:_glfwCreateWindowWayland
+   fun:glfwCreateWindow
+   ...
+}
+
+{
+   wsl-egl-driver-invalid-read-4
+   Memcheck:Value4
+   ...
+   obj:*/amdxc64.so*
+   obj:*/libd3d12core.so*
+   obj:*/libd3d12.so*
+   obj:*/swrast_dri.so*
+   obj:*/libEGL_mesa.so*
+   fun:_glfwCreateContextEGL
+   fun:_glfwCreateWindowWayland
+   fun:glfwCreateWindow
+   ...
+}

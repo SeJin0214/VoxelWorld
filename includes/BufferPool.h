@@ -3,12 +3,9 @@
 #include <array>
 #include <cstdint>
 #include <vector>
-#include <wrl/client.h>
-#include <d3d11.h>
+#include "glad/gl.h"
 
-using Microsoft::WRL::ComPtr;
 using std::vector;
-
 
 enum class PoolClass : int8_t
 {
@@ -31,12 +28,12 @@ struct SizeClass
 
 struct PooledBuffer
 {
-	ComPtr<ID3D11Buffer> Buffer;
+	GLuint Buffer;
 	PoolClass Class = PoolClass::None;
 };
 
-// °ø¿ë ¹öÆÛÇ®À» ¸¸µé°í
-// Size Buffer PoolÀ» ¸¸µå´Â °Ô ³ªÀ»Áöµµ?
+// ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½Ç®ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½
+// Size Buffer Poolï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ ï¿½ï¿½ ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½?
 
 class BufferPool
 {
@@ -82,5 +79,5 @@ public:
 	void printBufferSize() const;
 
 private:
-	vector<vector<ComPtr<ID3D11Buffer>>> mBufferPool;
+	vector<vector<GLuint>> mBufferPool;
 };

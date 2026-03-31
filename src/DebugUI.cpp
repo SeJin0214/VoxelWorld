@@ -10,22 +10,24 @@ void DebugUI::Draw(Profiler& profiler, const DebugUIContext& context)
 	ImGui::SetNextWindowPos(ImVec2(10.0f, 10.0f), ImGuiCond_Always);
 	ImGui::SetNextWindowBgAlpha(0.15f);
 
-	ImGui::Begin("Performance", nullptr,
+	ImGui::Begin("Basic", nullptr,
 		ImGuiWindowFlags_NoResize |
 		ImGuiWindowFlags_AlwaysAutoResize);
-	Vector3 position = context.Camera.GetPosition();
+	Vector3 position = context.mCamera.GetPosition();
 	ImGui::Text("Position (%.2f, %.2f, %.2f)\n", position.x, position.y, position.z);
 	ImGui::Text("FrameTimeMS %f\n", profiler.GetFrameTimeMS());
 	ImGui::Text("FPS %u\n", profiler.GetFPS());
 
 #ifdef PROFILE
+	ImGui::Separator();
+	ImGui::Text("Profiling");
 	ImGui::Text("Frametime 5sec Average %u\n", profiler.Get5SecondAverageFPS());
 	ImGui::Text("Frametime 15sec Average %u\n", profiler.Get15SecondAverageFPS());
-	ImGui::Text("Render Distance %u\n", context.RuntimeConfig.GetRenderDistance());
-	ImGui::Text("Loaded Chunks %u\n", context.MapManager.GetUsedChunkCount());
-	ImGui::Text("Built Meshes %u\n", context.Renderer.GetBuiltMeshCount());
-	ImGui::Text("Pending Jobs %u\n", context.Renderer.GetPendingUploadsCount());
-
+	ImGui::Text("Render Distance %u\n", context.mRuntimeConfig.GetRenderDistance());
+	ImGui::Text("Loaded Chunks %u\n", context.mMapManager.GetUsedChunkCount());
+	ImGui::Text("Built Meshes %u\n", context.mRenderer.GetBuiltMeshCount());
+	ImGui::Text("Draw Meshs %u\n", context.mRenderer.GetDrawMeshs());
+	ImGui::Text("Pending Jobs %u\n", context.mRenderer.GetPendingUploadsCount());
 
 
 	ImGui::Separator();
@@ -57,22 +59,22 @@ void DebugUI::Draw(Profiler& profiler, const DebugUIContext& context)
 		char label[64];
 		if (slot == 120)
 		{
-			sprintf_s(label, "120+");
+			sprintf(label, "120+");
 			slot = 110;
 		}
 		else if (slot > 30)
 		{
-			sprintf_s(label, "%3d-%3d", slot, slot + 9);
+			sprintf(label, "%3d-%3d", slot, slot + 9);
 			slot -= 10;
 		}
 		else if (slot == 30)
 		{
-			sprintf_s(label, "%3d-%3d", slot, slot + 9);
+			sprintf(label, "%3d-%3d", slot, slot + 9);
 			slot -= 5;
 		}
 		else
 		{
-			sprintf_s(label, "%2d-%2d*", slot, slot + 4);
+			sprintf(label, "%2d-%2d*", slot, slot + 4);
 			slot -= 5;
 		}
 

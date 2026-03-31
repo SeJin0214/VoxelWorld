@@ -1,65 +1,97 @@
 #pragma once
 
 #include <filesystem>
-#include <d3d11.h>
-#include <d3dcompiler.h>
-#include <wrl/client.h>
+#include <fstream>
+#include <sstream>
+#include <string>
+#include <optional>
+#include "tinyddsloader.h"
 
-using Microsoft::WRL::ComPtr;
+enum class BufferType
+{
+	Vertex,
+	Index,
+	Constant,
+};
+
+enum class BufferDataType
+{
+	Static,
+	Dynamic,
+};
 
 class GPUResourceService
 {
 public:
-	GPUResourceService(const ComPtr<ID3D11Device>& device, const ComPtr<ID3D11DeviceContext>& deviceContext);
+#ifdef _DEBUG
+	struct DebugResourceStats
+	{
+		uint32_t CreatedVAOs = 0;
+		uint32_t DeletedVAOs = 0;
+		uint32_t CreatedBuffers = 0;
+		uint32_t DeletedBuffers = 0;
+		uint32_t CreatedTextures = 0;
+		uint32_t DeletedTextures = 0;
+		uint32_t CreatedPrograms = 0;
+		uint32_t DeletedPrograms = 0;
+		uint32_t CreatedShaders = 0;
+		uint32_t DeletedShaders = 0;
+	};
+#endif
+
+	GPUResourceService();
 	~GPUResourceService() = default;
 	GPUResourceService(const GPUResourceService& other) = delete;
 	GPUResourceService& operator=(const GPUResourceService& rhs) = delete;
 
-	ComPtr<ID3D11Texture2D> CreateFrameBuffer(IDXGISwapChain* swapChain);
-	ComPtr<ID3D11RenderTargetView> CreateRenderTargetView(ID3D11Texture2D* frameBuffer);
-	ComPtr<ID3D11Texture2D> CreateDepthBuffer(UINT width, UINT height);
-	ComPtr<ID3D11DepthStencilView> CreateDepthStencilView(ID3D11Texture2D* depthBuffer);
+	GLuint CreateVAO() const;
+	void BindVAO(GLuint vao) const;
+	void ReleaseVAO(GLuint& vao) const;
+	void BindInputLayoutForRenderer() const;
+	void BindInputLayoutForSkybox() const;
 
-	ComPtr<ID3D11DepthStencilState> CreateDepthStencilState();
-	ComPtr<ID3D11DepthStencilState> CreateDepthStencilStateForSkyBox();
+	GLuint CreateStaticBuffer(BufferType bufferType, uint32_t byteWidth, const void* initialDataOrNull = nullptr) const;
+	GLuint CreateDynamicBuffer(BufferType bufferType, uint32_t byteWidth, const void* initialDataOrNull = nullptr) const;
+	GLuint CreateStaticConstantBufferGL(uint32_t byteWidth, const void* initialDataOrNull = nullptr) const;
+	GLuint CreateDynamicConstantBufferGL(uint32_t byteWidth, const void* initialDataOrNull = nullptr) const;
+	void UpdateStaticBufferSubData(BufferType bufferType, GLuint buffer, uint32_t byteOffset, uint32_t byteWidth, const void* dataPtr) const;
+	void UpdateDynamicBufferMapped(BufferType bufferType, GLuint buffer, uint32_t byteWidth, const void* dataPtr) const;
+	void ReleaseBuffer(GLuint& buffer) const;
+	void ReleaseBuffers(GLuint* buffers, uint32_t count) const;
+	void ReleaseTexture(GLuint& texture) const;
+	void BindTexture(GLuint texture) const;
+	void BindCubemap(GLuint cubemap) const;
+	void BindConstantBufferBase(uint32_t bindingPoint, GLuint buffer) const;
+	void BindBuffer(BufferType type, GLuint buffer) const;
 
-	ComPtr<ID3D11RasterizerState> CreateRaterizerState();
-	ComPtr<ID3D11RasterizerState> CreateRaterizerStateForSkyBox();
+	GLuint CreateProgramForRenderer() const;
+	GLuint CreateProgramForSkybox() const;
+	void BindProgram(GLuint program) const;
+	void ReleaseProgram(GLuint& program) const;
+	
+	std::optional<std::string> ReadAllText(const std::filesystem::path& path) const;
+	
+	GLuint CreateTexture(const int32_t w, const int32_t h, const void* texture);
+	GLuint CreateCubemapTexture(const tinyddsloader::DDSFile& dds);
+	
+#ifdef _DEBUG
+	const DebugResourceStats& GetDebugResourceStats() const { return mDebugResourceStats; }
+	void PrintDebugResourceStats() const;
+#endif
 
-	ComPtr<ID3D11SamplerState> CreateSamplerState();
-	ComPtr<ID3D11SamplerState> CreateSamplerStateForSkyBox();
-
-	ComPtr<ID3DBlob> CompileVertexShader(const std::filesystem::path& vertexPath);
-	ComPtr<ID3DBlob> CompilePixelShader(const std::filesystem::path& pixelPath);
-	ComPtr<ID3D11VertexShader> CreateVertexShader(ID3DBlob* vertexBlob);
-	ComPtr<ID3D11PixelShader> CreatePixelShader(ID3DBlob* pixelBlob);
-	ComPtr<ID3D11InputLayout> CreateInputLayout(ID3DBlob* vertexBlob);
-	ComPtr<ID3D11InputLayout> CreateInputLayoutForSkyBox(ID3DBlob* vertexBlob);
-
-	ComPtr<ID3D11ShaderResourceView> CreateTextureAndSRV(const std::filesystem::path& texturePath);
-	ComPtr<ID3D11ShaderResourceView> CreateTextureAndSRVForSkyBox(const std::filesystem::path& texturePath);
-
-	ComPtr<ID3D11Query> CreatePipelineStatisticsQuery();
-	void LogPipelineState(D3D11_QUERY_DATA_PIPELINE_STATISTICS& stats, const size_t drawCallCount, const float deltaTIme);
-
-	ComPtr<ID3D11Buffer> CreateStaticVertexBuffer(const UINT byteWidth, const void* initialDataOrNull = nullptr);
-	ComPtr<ID3D11Buffer> CreateDynamicVertexBuffer(const UINT byteWidth);
-
-	ComPtr<ID3D11Buffer> CreateStaticIndexBuffer(const UINT byteWidth, const void* initialDataOrNull = nullptr);
-	ComPtr<ID3D11Buffer> CreateDynamicIndexBuffer(const UINT byteWidth);
-
-	ComPtr<ID3D11Buffer> CreateStaticConstantBuffer(const UINT byteWidth, const void* initialDataOrNull = nullptr);
-	ComPtr<ID3D11Buffer> CreateDynamicConstantBuffer(const UINT byteWidth);
-
-	ComPtr<ID3D11Buffer> CreateDynamicInstanceBuffer(const UINT byteWidth, const UINT stride = 0);
-	ComPtr<ID3D11Buffer> CreateStaticInstanceBuffer(const UINT byteWidth, const UINT stride = 0, const void* initialDataOrNull = nullptr);
-
-	void UpdateDynamicBuffer(ID3D11Buffer* buffer, const void* dataPtr, const size_t byteWidth);
-	void UpdateStaticBuffer(ID3D11Buffer* buffer, const void* dataPtr);
 
 private:
-	ComPtr<ID3D11Device> mDevice;
-	ComPtr<ID3D11DeviceContext> mDeviceContext;
+	GLenum GetGLBufferTarget(BufferType bufferType) const;
+	GLenum GetGLBufferUsage(BufferDataType dataType) const;
+	GLuint CreateProgramFor(const char* vertexFileName, const char* fragmentFileName) const;
+	GLuint CreateProgram(const char* vsSource, const char* fsSource) const;
+	GLuint CompileShader(GLenum stage, const char* source) const;
+	void ReleaseShader(GLuint shader) const;
+
+#ifdef _DEBUG
+	mutable DebugResourceStats mDebugResourceStats;
+	// const 함수 안에서도 변경 가능
+#endif
 };
 
 

@@ -3,32 +3,32 @@
 
 struct WorldConfig
 {
-	// Ã»Å©
+	// ì²­í¬
 	static constexpr int32_t CHUNK_SIZE = 16;
 	static_assert(CHUNK_SIZE % 16 == 0);
 
 	// BiomePolicy
 	static constexpr uint32_t WORLD_SEED = 12345;
 
-	// ¸Ê ¸Å´ÏÀú
+	// ë§µ ë§¤ë‹ˆì €
 	static constexpr int32_t WORLD_SIZE_X = 16384; // 2^14
 	static constexpr int32_t WORLD_SIZE_Y = 256;
 	static constexpr int32_t WORLD_SIZE_Z = 16384;
 	static constexpr int32_t WORLD_MIN_X = WORLD_SIZE_X / 2 * -1;
-	static constexpr int32_t WORLD_MIN_Y = WORLD_SIZE_Y / 4 * -1; // 4ºĞÀÇ 1¸¸ ¹Ø¿¡
+	static constexpr int32_t WORLD_MIN_Y = WORLD_SIZE_Y / 4 * -1; // 4ë¶„ì˜ 1ë§Œ ë°‘ì—
 	static constexpr int32_t WORLD_MIN_Z = WORLD_SIZE_Z / 2 * -1;
 	static constexpr int32_t WORLD_MAX_X = WORLD_SIZE_X / 2;
-	static constexpr int32_t WORLD_MAX_Y = WORLD_SIZE_Y / 4 * 3;  // 4ºĞÀÇ 3ÀÌ À§¿¡
+	static constexpr int32_t WORLD_MAX_Y = WORLD_SIZE_Y / 4 * 3;  // 4ë¶„ì˜ 3ì´ ìœ„ì—
 	static constexpr int32_t WORLD_MAX_Z = WORLD_SIZE_Z / 2;
 	static_assert(WORLD_SIZE_X % 16 == 0 && WORLD_SIZE_Y % 16 == 0 && WORLD_SIZE_Z % 16 == 0);
-	// ¿ùµå ÁÂÇ¥¸¦ ¾îµğ¼­ºÎÅÍ ¾îµğ±îÁö·Î Á¤ÇØ¾ß ÇÒ °Å °°Àºµ¥
+	// ì›”ë“œ ì¢Œí‘œë¥¼ ì–´ë””ì„œë¶€í„° ì–´ë””ê¹Œì§€ë¡œ ì •í•´ì•¼ í•  ê±° ê°™ì€ë°
 
-	// Ä«¸Ş¶ó
+	// ì¹´ë©”ë¼
 	static constexpr uint32_t DEFAULT_RENDER_DISTANCE = 160;
 	static constexpr int32_t RANGE = 5;
 	static constexpr float FOV_DEGREES = 80.f;
 	static constexpr float NEAR_Z = 0.1f;
-	static constexpr float FAR_Z = 500.0f; // Åõ¿µ Çà·Ä ¿ø°Å¸® Å¬¸³ Æò¸é
+	static constexpr float FAR_Z = 500.0f; // íˆ¬ì˜ í–‰ë ¬ ì›ê±°ë¦¬ í´ë¦½ í‰ë©´
 
 	// Renderer
 };

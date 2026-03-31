@@ -19,10 +19,10 @@ void BlockMeshData::AddFace(std::vector<BlockVertex>& vertices, std::vector<uint
 	for (uint32_t i = 0; i < POINT_COUNT; ++i)
 	{
 		Vector2 currentUV = Vector2(static_cast<float>(uvs[i].x), static_cast<float>(uvs[i].y));
-		// BlockType¿¡ µû¸¥ UV ÁÂÇ¥ °è»êÇÏ±â, ÀÏ´ÜÀº type ¹«½ÃÇÏ°í uv °íÁ¤
+		// BlockTypeì— ë”°ë¥¸ UV ì¢Œí‘œ ê³„ì‚°í•˜ê¸°, ì¼ë‹¨ì€ type ë¬´ì‹œí•˜ê³  uv ê³ ì •
 		BlockVertex p
 		{
-			// texture IDµµ ³Ö¾î¾ß ÇÑ´Ù.
+			// texture IDë„ ë„£ì–´ì•¼ í•œë‹¤.
 			.position = Vector3(
 				static_cast<float>(chunkWorldPosition.x + position.x) + static_cast<float>(verticesScaledBy2[dir][i].x) * 0.5f,
 				static_cast<float>(chunkWorldPosition.y + position.y) + static_cast<float>(verticesScaledBy2[dir][i].y) * 0.5f,

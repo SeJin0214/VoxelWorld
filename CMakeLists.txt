@@ -18,6 +18,8 @@ set(IMGUI_INC_DIR ${THIRD_PART_DIR}/imgui_linux)
 set(GLFW_DIR ${THIRD_PART_DIR}/glfw)
 set(GLM_DIR ${THIRD_PART_DIR}/glm)
 set(GLAD_DIR ${THIRD_PART_DIR}/glad)
+set(STB_DIR ${THIRD_PART_DIR}/stb)
+set(TINYDDS_DIR ${THIRD_PART_DIR}/tinyddsloader)
 
 set(SRCS
 	${SRC_DIR}/AdaptiveRenderDistanceController.cpp
@@ -26,9 +28,9 @@ set(SRCS
 	${SRC_DIR}/BlockMeshData.cpp
 	${SRC_DIR}/BufferPool.cpp
 	${SRC_DIR}/Camera.cpp
-	${SRC_DIR}/Chunk.cpp
-	${SRC_DIR}/DeviceFactory.cpp
-	${SRC_DIR}/GPUResourceService.cpp
+		${SRC_DIR}/Chunk.cpp
+		${SRC_DIR}/Frustum.cpp
+		${SRC_DIR}/GPUResourceService.cpp
 	${SRC_DIR}/InputManager.cpp
 	${SRC_DIR}/Logger.cpp
 	${SRC_DIR}/main.cpp
@@ -38,11 +40,11 @@ set(SRCS
 	${SRC_DIR}/Platform.cpp
 	${SRC_DIR}/Renderer.cpp
 	${SRC_DIR}/RuntimeConfig.cpp
-	${SRC_DIR}/ScreenManager.cpp
-	${SRC_DIR}/SkyBox.cpp
-	${SRC_DIR}/TextureManager.cpp
-	${SRC_DIR}/Timer.cpp
- 	${SRC_DIR}/ImGuiLayer.cpp 
+		${SRC_DIR}/ScreenManager.cpp
+		${SRC_DIR}/SkyBox.cpp
+		${SRC_DIR}/TextureManager.cpp
+		${SRC_DIR}/Timer.cpp
+ 	${SRC_DIR}/ImguiLayer.cpp 
 	${SRC_DIR}/DebugUI.cpp 
 	${SRC_DIR}/Profiler.cpp
 	${SRC_DIR}/JobScheduler.cpp)
@@ -53,8 +55,19 @@ set(IMGUI_SRCS
 	${IMGUI_DIR}/imgui_draw.cpp
 	${IMGUI_DIR}/imgui_impl_glfw.cpp
 	${IMGUI_DIR}/imgui_impl_opengl3.cpp
+	${IMGUI_DIR}/imgui_impl_opengl3_loader.h
 	${IMGUI_DIR}/imgui_tables.cpp
 	${IMGUI_DIR}/imgui_widgets.cpp
+)
+
+set(IMGUI_REQUIRED_FILES
+	${IMGUI_DIR}/imgui.h
+	${IMGUI_DIR}/imgui.cpp
+	${IMGUI_DIR}/imgui_impl_glfw.h
+	${IMGUI_DIR}/imgui_impl_glfw.cpp
+	${IMGUI_DIR}/imgui_impl_opengl3.h
+	${IMGUI_DIR}/imgui_impl_opengl3.cpp
+	${IMGUI_DIR}/imgui_impl_opengl3_loader.h
 )
 
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${GLFW_DIR}/CMakeLists.txt)
@@ -69,8 +82,18 @@ if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${GLAD_DIR}/cmake/CMakeLists.txt)
 	message(FATAL_ERROR "glad was not found. Run installer/Linux/install_opengl.sh first.")
 endif()
 
-if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${IMGUI_DIR}/imgui_impl_glfw.cpp)
-	message(FATAL_ERROR "ImGui GLFW/OpenGL3 backend was not found. Install imgui with glfw + opengl3.")
+foreach(IMGUI_FILE IN LISTS IMGUI_REQUIRED_FILES)
+	if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${IMGUI_FILE})
+		message(FATAL_ERROR "ImGui GLFW/OpenGL3 backend is incomplete. Missing '${IMGUI_FILE}'. Run installer/Linux/install_imgui.sh.")
+	endif()
+endforeach()
+
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${STB_DIR}/stb_image.h)
+	message(FATAL_ERROR "stb was not found. Run installer/Linux/install_stb_image.sh first.")
+endif()
+
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/${TINYDDS_DIR}/tinyddsloader.h)
+	message(FATAL_ERROR "tinyddsloader was not found. Run installer/Linux/install_tinyddsloader.sh first.")
 endif()
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
@@ -88,10 +111,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 	${INC_DIR}
 	${IMGUI_INC_DIR}
 	${GLM_DIR}
-)
-
-target_link_options(${PROJECT_NAME} PRIVATE
-    $<$<CONFIG:RelWithDebInfo>:/DEBUG>
+	${STB_DIR}
+	${TINYDDS_DIR}
 )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -102,6 +123,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 # 전처리기
 target_compile_definitions(${PROJECT_NAME} PRIVATE
+    GLM_ENABLE_EXPERIMENTAL # glm gtx 사용하기 위함
     $<$<CONFIG:Debug>:_DEBUG>
     $<$<CONFIG:RelWithDebInfo,Debug>:PROFILE>
 )

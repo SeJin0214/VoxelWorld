@@ -1,9 +1,10 @@
 #pragma once
+#include "glad/gl.h"
+#include "stb_image.h"
+#include "tinyddsloader.h"
 
-#include <d3d11.h>
-#include <wrl/client.h>
-
-using Microsoft::WRL::ComPtr;
+using Cubemap = const tinyddsloader::DDSFile::ImageData*;
+using Texture2D = stbi_uc*;
 
 class GPUResourceService;
 
@@ -11,19 +12,19 @@ class TextureManager
 {
 public:
 	TextureManager(GPUResourceService& gpuResourceService);
-	~TextureManager() = default;
+	~TextureManager();
 	TextureManager(const TextureManager& other) = delete;
 	TextureManager& operator=(const TextureManager& rhs) = delete;
 
-	ComPtr<ID3D11ShaderResourceView> GetBlockAtlasSRV() const { return mBlockAtlasSRV; }
-	ComPtr<ID3D11ShaderResourceView> GetSkyBoxSRV() const { return mSkyBoxSRV; }
-
+	GLuint GetBlockAtlas() const { return mBlockAtlas; }
+	GLuint GetSkyboxCubemap() const { return mSkyboxCubemap; }
 
 private:
 	GPUResourceService& mGPUResourceService;
+	GLuint mBlockAtlas;
+	GLuint mSkyboxCubemap;
 
-	ComPtr<ID3D11ShaderResourceView> mBlockAtlasSRV;
-	ComPtr<ID3D11ShaderResourceView> mSkyBoxSRV;
-
-
+	// texture loadder
+	GLuint LoadTexture2D() const;
+	GLuint LoadCubemapDDS() const;
 };

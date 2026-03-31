@@ -1,11 +1,13 @@
 ﻿#include <algorithm>
-#include <string>
 #include "Camera.h"
 #include "ScreenManager.h"
 #include "MapManager.h"
 #include "Logger.h"
 #include "WorldConfig.h"
 #include "InputManager.h"
+#include "glm/gtx/transform.hpp" // 이동행렬
+#include "glm/gtc/matrix_transform.hpp" // 투영행렬
+#include "glm/gtc/quaternion.hpp"
 
 Camera::Camera(const Vector3 position, const Vector3 rotation)
 	: mPosition(position)
@@ -33,7 +35,7 @@ void Camera::Update(const CameraInput& input, const float deltaTime, MapManager&
 	Vector3 mouseMovement = Vector3(input.MouseMovement.x, input.MouseMovement.y, 0.f);
 
 	mbTransformDirty = true;
-	if (position != Vector3::Zero || mouseMovement != Vector3::Zero)
+	if (position != Vector3(0.f, 0.f, 0.f) || mouseMovement != Vector3(0.f, 0.f, 0.f))
 	{
 		mbTransformDirty = false;
 		CreateViewMatrix(position, mouseMovement, deltaTime);
@@ -72,36 +74,38 @@ void Camera::TryRemoveBlock(MapManager& mapManager) const
 
 void Camera::CreateViewMatrix(const Vector3 position, const Vector3 mouseMovement, const float deltaTime)
 {
-	constexpr float SENSITIVITY = 5.f;
-	mRotation.y += mouseMovement.x * SENSITIVITY * deltaTime; // yaw 
-	mRotation.x = std::clamp(mRotation.x + mouseMovement.y * SENSITIVITY * deltaTime, -89.9f, 89.9f); // pitch
+	constexpr float SENSITIVITY = 0.5f;
+	// Cursor delta is already measured per frame, so don't scale it by deltaTime.
+	// Window Y grows downward, so pitch needs the opposite sign for FPS-style look.
+	mRotation.y -= mouseMovement.x * SENSITIVITY; // yaw
+	mRotation.x = std::clamp(mRotation.x - mouseMovement.y * SENSITIVITY, -89.9f, 89.9f); // pitch
 
 	Vector3 rotationRad = Vector3(
-		XMConvertToRadians(mRotation.x),
-		XMConvertToRadians(mRotation.y),
-		XMConvertToRadians(mRotation.z)
+		glm::radians(mRotation.x),
+		glm::radians(mRotation.y),
+		glm::radians(mRotation.z)
 	);
 
-	Quaternion q = Quaternion::CreateFromYawPitchRoll(rotationRad);
-	mBasis = Matrix::CreateFromQuaternion(q);
+	glm::quat q(rotationRad);
+	mBasis = glm::mat4_cast(q);
 
 	const float SPEED = GetCurrentSpeed();
-	mPosition += position.x * mBasis.Right() * SPEED * deltaTime;
-	mPosition += position.y * mBasis.Up() * SPEED * deltaTime;
+	mPosition += position.x * GetRightDirection() * SPEED * deltaTime;
+	mPosition += position.y * GetUpDirection() * SPEED * deltaTime;
 	mPosition += position.z * GetForwardDirection() * SPEED * deltaTime;
 
-	Matrix world = mBasis * Matrix::CreateTranslation(mPosition);
-	mViewMatrix = world.Invert();
+	Matrix world = glm::translate(mPosition) * mBasis;
+	mViewMatrix = glm::inverse(world);
 
-	mViewProjMatrix = mViewMatrix * mProjMatrix;
+	mViewProjMatrix =  mProjMatrix * mViewMatrix;
 }
 
 void Camera::CreatePjoectionMatrix()
 {
-	constexpr float FOV_RADIAN = DirectX::XMConvertToRadians(WorldConfig::FOV_DEGREES);
+	constexpr float FOV_RADIAN = glm::radians(WorldConfig::FOV_DEGREES);
 	const float ASPECT_RATIO = ScreenManager::GetInstance().GetClientAreaAspectRatio();
 
-	mProjMatrix = DirectX::XMMatrixPerspectiveFovLH(FOV_RADIAN, ASPECT_RATIO, WorldConfig::NEAR_Z, WorldConfig::FAR_Z);
+	mProjMatrix = glm::perspective(FOV_RADIAN, ASPECT_RATIO, WorldConfig::NEAR_Z, WorldConfig::FAR_Z);
 }
 
 float Camera::GetCurrentSpeed() const

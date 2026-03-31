@@ -3,6 +3,7 @@
 #include "ChunkInfo.h"
 #include "Types.h"
 #include "MeshBuilder.h"
+#include <unordered_map>
 
 class Camera;
 class Chunk;

@@ -5,6 +5,7 @@
 #include "glm/vec4.hpp"
 #include "glm/geometric.hpp"
 #include "glm/mat4x4.hpp"
+#include "glm/glm.hpp"
 
 using ChunkKey = uint64_t;
 using Vector2 = glm::vec2;

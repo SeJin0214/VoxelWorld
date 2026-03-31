@@ -12,10 +12,10 @@ class Camera;
 
 struct DebugUIContext
 {
-	const Camera& Camera;
-	const RuntimeConfig& RuntimeConfig;
-	const MapManager& MapManager;
-	const Renderer& Renderer;
+	const Camera& mCamera;
+	const RuntimeConfig& mRuntimeConfig;
+	const MapManager& mMapManager;
+	const Renderer& mRenderer;
 };
 
 class DebugUI
