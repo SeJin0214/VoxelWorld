@@ -1,5 +1,7 @@
 #pragma once
 
+
+
 #include <d3d11.h>
 #include <wrl/client.h>
 #include <memory>
@@ -62,6 +64,7 @@ public:
 
 	void OnDisableChunk(const ChunkKey key);
 
+	uint32_t GetDrawMeshs() const { return mDrawMeshs; }
 	uint32_t GetBuiltMeshCount() const { return mChunkMeshes.size(); }
 	uint32_t GetPendingUploadsCount() const { return mPendingUploads.size(); }
 
@@ -128,6 +131,7 @@ private:
 
 	// Meshs
 	std::unordered_map<ChunkKey, ChunkMesh> mChunkMeshes;
+	uint32_t mDrawMeshs;
 
 
 

@@ -225,6 +225,7 @@ ComPtr<ID3D11SamplerState> GPUResourceService::CreateSamplerState()
 
 	ComPtr<ID3D11SamplerState> samplerState;
 	HRESULT hr = mDevice->CreateSamplerState(&sd, samplerState.GetAddressOf());
+
 	assert(SUCCEEDED(hr) && samplerState != nullptr);
 	return samplerState;
 }

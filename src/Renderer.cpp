@@ -1,3 +1,4 @@
+
 #include <cassert>
 #include <wrl/client.h>
 #include <iostream>
@@ -53,6 +54,8 @@ Renderer::Renderer(const DeviceBundle& deviceBundle, GPUResourceService& gpuReso
 void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& mapManager)
 {
 	BeginFrame();
+	mDrawMeshs = 0;
+
 
 	//mDeviceContext->Begin(mPipelineQuery.Get());
 
@@ -109,6 +112,8 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 		ChunkMesh& chunkMesh = mChunkMeshes[key];
 		Render(chunkMesh.VertexBuffer.Buffer.Get(), chunkMesh.IndexBuffer.Buffer.Get(), chunkMesh.IndexCount);
 		//++drawCallCount;
+		++mDrawMeshs;
+
 	}
 
 	//timer.StartSection();
@@ -189,7 +194,6 @@ void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position
 
 	//mDeviceContext->UpdateSubresource(mConstantBuffer, 0, nullptr, &cb, 0, 0);
 
-
 }
 
 // 包府秦具 窍绰 格废
@@ -266,6 +270,18 @@ ID3D11Buffer* Renderer::CreateInstanceBuffer(const UINT byteWidth)
 void Renderer::Release()
 {
 	assert(mDevice != nullptr);
+
+	while (mCompletedBuildResults.empty() == false)
+	{
+		mJobScheduler.ReleaseMeshData(mCompletedBuildResults.front());
+		mCompletedBuildResults.pop();
+	}
+
+	while (mPendingUploads.empty() == false)
+	{
+		mJobScheduler.ReleaseMeshData(mPendingUploads.front().Mesh);
+		mPendingUploads.pop();
+	}
 
 	mDeviceContext->ClearState();
 	mDeviceContext->Flush();
