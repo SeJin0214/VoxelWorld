@@ -31,8 +31,7 @@ SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureMa
 	GLint loc = glGetUniformLocation(mShaderProgram, "gTex");
 	glUniform1i(loc, 0);
 
-	// RasterizerState���� CullMode�� Front�� �����ؾ� �ϴ� ������
-	// ť�� ���ؽ� ������ (���� 8��)
+	// 큐브 정점 배열 (총 8개)
 	Vector3 vertices[SKYBOX_VERTEX_COUNT] =
 	{
 		{ -1.0f,  1.0f, -1.0f }, // 0  * 
@@ -46,7 +45,7 @@ SkyBox::SkyBox(GPUResourceService& gpuResourceService, TextureManager& textureMa
 	};
 	gpuResourceService.UpdateStaticBufferSubData(BufferType::Vertex, mVertexBuffer, 0, SKYBOX_VERTEX_COUNT * sizeof(Vector3), vertices);
 
-	// ť�� �ε��� ������ (12 �ﰢ��, 36 �ε���)
+	// 큐브 인덱스 배열 (12 삼각형, 36 인덱스)
 	uint32_t indices[SKYBOX_INDEX_COUNT] =
 	{
 		0, 1, 2, 0, 2, 3, // back face
@@ -69,7 +68,7 @@ SkyBox::~SkyBox()
 	mGPUResourceService.ReleaseVAO(mVAO);
 }
 
-// ���ҽ� �������� �����ϱ�
+// 리소스 바인딩과 상수 버퍼 업데이트
 void SkyBox::BeginFrame(GLFWwindow* window, const Camera& camera)
 {
 	WVPMatrix wvpMatrix;

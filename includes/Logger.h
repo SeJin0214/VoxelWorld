@@ -14,15 +14,15 @@ enum class LogSink
 
 enum class LogLevel
 {
-	Debug,  // ����׿�
-	Info,   // ������
+	Debug,  // 디버그용
+	Info,   // 정보용
 	Warning,
 	Error,
 	Cretical,
 	Size
 };
 
-#define LOG(logSink, logLevel, format, ...) (Logger::GetInstance().Log(logSink, logLevel, format, ##__VA_ARGS__)) // ���ھ����� �޸� ����
+#define LOG(logSink, logLevel, format, ...) (Logger::GetInstance().Log(logSink, logLevel, format, ##__VA_ARGS__)) // 가변 인자 로깅 매크로
 
 class Logger
 {

@@ -25,9 +25,9 @@ class GPUResourceService;
 class JobScheduler;
 
 
-// Renderer ûũ �޽� ��å
-// 1. MapManager���� �Ÿ����� ����� ���� OnDisableChunk�� ȣ���Ѵ�.
-// 2. ���ο��� Mesh�� ������ ��, ������ ���� OnDisableChunk�� ȣ���Ѵ�.
+// Renderer 청크 메쉬 정책
+// 1. MapManager에서 스트리밍 범위를 벗어나면 OnDisableChunk를 호출한다.
+// 2. 청크 상태가 바뀌면 메쉬를 다시 생성해 반영한다.
 
 
 
@@ -44,13 +44,13 @@ public:
 	void Create();
 	void Release();
 
-	// �� ���� ����
+	// 정적 파이프라인 상태 설정
 	void SetupStaticPipelineState();
 
-	// �������� ����
+	// 프레임 시작 처리
 	void BeginFrame();
 
-	// �̰͵� ���� ����
+	// 상수 버퍼 업데이트
 	void UpdateConstantBuffer(const Camera& camera, const Vector3 position);
 
 	void OnDisableChunk(const ChunkKey key);
@@ -85,7 +85,7 @@ public:
 
 private:
 
-	struct ChunkMesh // Mesh State�� �и�
+	struct ChunkMesh // Mesh State 분리
 	{
 		GLuint VAO;
 		PooledBuffer VertexBuffer;

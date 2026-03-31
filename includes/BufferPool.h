@@ -32,8 +32,8 @@ struct PooledBuffer
 	PoolClass Class = PoolClass::None;
 };
 
-// ���� ����Ǯ�� �����
-// Size Buffer Pool�� ����� �� ��������?
+// 청크 버퍼 풀 관리
+// Size Buffer Pool로 분리할 필요가 있을까?
 
 class BufferPool
 {

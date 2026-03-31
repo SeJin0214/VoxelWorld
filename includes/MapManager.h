@@ -36,9 +36,9 @@ private:
 		MEMORY_POOL_SIZE = 16384
 	};
 
-	std::unordered_map<ChunkKey, int32_t> mChunks; // Ž����
-	std::vector<ChunkInfo> mUsedChunks; // ������� �ֵ�, ��ȸ��
-	std::vector<int32_t> mFreePool; // �޸� Ǯ
+	std::unordered_map<ChunkKey, int32_t> mChunks; // 탐색용
+	std::vector<ChunkInfo> mUsedChunks; // 사용 중인 청크, 순회용
+	std::vector<int32_t> mFreePool; // 메모리 풀
 	Chunk* mChunkArray;
 	IVector3 mLastChunkPosition;
 	StreamingPolicy& mStreamingPolicy;

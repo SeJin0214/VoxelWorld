@@ -32,31 +32,31 @@ bool InputManager::Update(GLFWwindow* window)
 	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 	{
 		mKeyboardMovement.z -= 1.f;
-		//Logger::Log("S Ű ������ �� - �ڷ� �̵�!\n");
+		//Logger::Log("S 키 입력 시 - 뒤로 이동!\n");
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 	{
 		mKeyboardMovement.x -= 1.f;
-		//Logger::Log("A Ű ������ �� - �������� �̵�!\n");
+		//Logger::Log("A 키 입력 시 - 왼쪽으로 이동!\n");
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 	{
 		mKeyboardMovement.x += 1.f;
-		//Logger::Log("D Ű ������ �� - ���������� �̵�!\n");
+		//Logger::Log("D 키 입력 시 - 오른쪽으로 이동!\n");
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
 	{
 		mKeyboardMovement.y += 1.f;
-		//Logger::Log("Q Ű ������ �� - ���� �̵�!\n");
+		//Logger::Log("Q 키 입력 시 - 위로 이동!\n");
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_Z) == GLFW_PRESS)
 	{
 		mKeyboardMovement.y -= 1.f;
-		//Logger::Log("Z Ű ������ �� - �Ʒ��� �̵�!\n");
+		//Logger::Log("Z 키 입력 시 - 아래로 이동!\n");
 	}
 
 	// Press로 변경하기
@@ -87,10 +87,10 @@ bool InputManager::Update(GLFWwindow* window)
 		mbIsMoved = true;
 	}
 
-	//Logger::Log("���콺 �̵� x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
+	//Logger::Log("마우스 이동 x: %.2f, y: %.2f", mMouseMovement.x, mMouseMovement.y);
 	if (glfwGetMouseButton(window, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
 	{
-		LOG(LogSink::Console, LogLevel::Info, "���콺 Ŭ��");
+		LOG(LogSink::Console, LogLevel::Info, "마우스 클릭");
 		mbIsLeftButtonDown = true;
 	}
 	return true;

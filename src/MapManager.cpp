@@ -24,11 +24,11 @@ MapManager::MapManager(StreamingPolicy& streamingPolicy)
 
 void MapManager::Update(const Camera& camera, Renderer& renderer)
 {
-	// ��ġ ������ ��, 
-	// ���߿� �����Ÿ� ������ ���� �־��ֱ� if (camera.IsChangedRenderDistance())
+	// 위치가 바뀌었을 때,
+	// 나중에는 렌더 거리 변경도 같이 반영하기
 	if (IsMovedChunkPosition(camera)) 
 	{
-		//LOG(LogSink::Console, LogLevel::Info, "ûũ ������ �ٲ�");
+		//LOG(LogSink::Console, LogLevel::Info, "청크 위치가 바뀜");
 		UpdateChunkStreaming(camera, renderer);
 	}
 }
@@ -46,8 +46,8 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 	int32_t loadHalfExtent = mStreamingPolicy.GetLoadHalfExtent();
 	int32_t chunkSize = WorldConfig::CHUNK_SIZE;
 
-	// �� �� �� �ݺ��Ǹ�, Invoke�� ȣ���ϵ��� �߻�ȭ
-	int32_t back = std::max(WorldConfig::WORLD_MIN_Z, mLastChunkPosition.z - loadHalfExtent); // ���� ����� �� �ε� ���ϵ���
+	// 범위를 벗어나면 더 이상 로드하지 않도록 제한
+	int32_t back = std::max(WorldConfig::WORLD_MIN_Z, mLastChunkPosition.z - loadHalfExtent); // 뒤쪽 경계를 넘지 않도록 제한
 	int32_t front = std::min(WorldConfig::WORLD_MAX_Z - chunkSize, mLastChunkPosition.z + loadHalfExtent);
 	for (int32_t i = back; i <= front; i += chunkSize)
 	{
@@ -84,13 +84,13 @@ void MapManager::UpdateChunkStreaming(const Camera& camera, Renderer& renderer)
 		ChunkKey chunkKey = ChunkMath::ToChunkKey(chunkInfo.Position);
 		mChunks.erase(chunkKey);
 
-		std::swap(mUsedChunks[i], mUsedChunks.back()); // ������ ��ҿ� ������ ��Ҹ� ����
+		std::swap(mUsedChunks[i], mUsedChunks.back()); // 제거할 요소 자리에 마지막 요소를 덮어씀
 		mUsedChunks.pop_back();
-		--i; // ��Ұ� �ϳ� ���ŵǾ����Ƿ� �ε��� ����
+		--i; // 요소가 하나 줄었으므로 인덱스를 유지
 
 		renderer.OnDisableChunk(chunkKey);
 	}
-	// ���� ûũ �������� �������� ���� �Ÿ� ���� ûũ���� ����
+	// 현재 청크 위치를 기준으로 렌더 거리 밖의 청크를 제거
 }
 
 bool MapManager::IsMovedChunkPosition(const Camera& camera) const
@@ -100,8 +100,7 @@ bool MapManager::IsMovedChunkPosition(const Camera& camera) const
 
 bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 {
-	// ���⵵ �� �³� 
-	// �� ���������� ûũ ã��
+	// 블록 위치로부터 해당 청크 찾기
 	ChunkKey key = ChunkMath::ToChunkKey(ChunkMath::ToChunkOrigin(blockPosition));
 	const auto& iter = mChunks.find(key);
 	if (iter == mChunks.end())
@@ -109,7 +108,6 @@ bool MapManager::IsBlockAt(const Vector3 blockPosition) const
 		return false;
 	}
 
-	// �ؽ÷� �����ϱ� 
 	const Chunk& chunk = mChunkArray[iter->second];
 	return chunk.IsBlockAt(blockPosition);
 }
@@ -127,17 +125,17 @@ void MapManager::RemoveBlockAt(const Vector3 blockPosition)
 const Chunk& MapManager::GetChunk(const ChunkKey key) const
 {
 	assert(mChunks.contains(key));
-	return mChunkArray[mChunks.find(key)->second]; // const�� []�� �� ��
+	return mChunkArray[mChunks.find(key)->second]; // const에서는 []를 쓸 수 없음
 }
 
 Chunk& MapManager::GetChunkForUpdate(const ChunkKey key) const
 {
-	// const_cast�� �����ϴ� �� ���� �� ����.
+	// const 함수지만 수정용 접근자를 별도로 제공
 	assert(mChunks.contains(key));
 	return mChunkArray[mChunks.find(key)->second];
 }
 
-// mUsedChunks�� ���� ���
+// mUsedChunks를 기준으로 조회
 const Chunk& MapManager::GetChunk(const ChunkInfo& chunkInfo) const
 {
 	assert(mChunks.find(ChunkMath::ToChunkKey(chunkInfo.Position)) != mChunks.end());

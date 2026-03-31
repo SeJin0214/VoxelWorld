@@ -24,7 +24,7 @@ private:
 	GLuint mBlockAtlas;
 	GLuint mSkyboxCubemap;
 
-	// texture loadder
+	// texture loader
 	GLuint LoadTexture2D() const;
 	GLuint LoadCubemapDDS() const;
 };

@@ -51,11 +51,11 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 
 	for (uint32_t i = 0; i < usedChunks.size(); ++i)
 	{
-		// usedChunks[i] ������ frustum �ø� �Ǵ��ϱ�
+		// usedChunks[i] 기준으로 frustum 컬링 판단하기
 		const Chunk& chunk = mapManager.GetChunk(usedChunks[i]);
 		IVector3 chunkPosition = chunk.GetChunkPosition();
 
-		// �Լ��� ���� 
+		// AABB 구성
 		// BoundingBox aabb;
 		// BoundingBox::CreateFromPoints(aabb,
 		// 	XMVECTOR{ static_cast<float>(chunkPosition.x), static_cast<float>(chunkPosition.y), static_cast<float>(chunkPosition.z) },
@@ -76,7 +76,7 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 			continue;
 		}
 
-		if (chunk.IsEmpty()) // �ٷ� �Ǵ� ����
+		if (chunk.IsEmpty()) // 바로 건너뛰는 경우
 		{
 			continue;
 		}
@@ -84,7 +84,7 @@ void Renderer::Update(const Camera& camera, const float deltaTime, MapManager& m
 		ChunkKey key = ChunkMath::ToChunkKey(chunkPosition);
 		if (chunk.IsDirty())
 		{
-			// �ٲ� �� �� �� �ۿ� �� ���´�.
+			// 청크가 바뀌면 메쉬를 다시 빌드해야 한다.
 			RequestChunkMeshBuild(key);
 			mapManager.ClearDirty(key);
 		}
@@ -222,13 +222,13 @@ void Renderer::UpdateConstantBuffer(const Camera& camera, const Vector3 position
 	mGPUResourceService.UpdateDynamicBufferMapped(BufferType::Constant, mConstantBuffer, sizeof(WVPMatrix), &cb);
 }
 
-// �����ؾ� �ϴ� ���
+// 정리해야 하는 것
 // 1. mChunkMeshes
-// 2. ������ ���۵� ��ȯ
-// 3. 
+// 2. 생성이 완료된 결과
+// 3. 업로드 대기 큐
 void Renderer::OnDisableChunk(const ChunkKey key)
 {
-	// ûũ�� ������ ���� ��쿣 ĳ�ø� ���� ���� �ʴ�.
+	// 청크가 비활성 상태면 캐시를 건드릴 필요가 없다.
 	if (mChunkMeshes.contains(key) == false)
 	{
 		return;
@@ -287,7 +287,7 @@ void Renderer::BeginFrame()
 	glEnable(GL_CULL_FACE);
 	glFrontFace(GL_CCW);
 
-	// SkyBox ������ BeginFrame����
+	// SkyBox 상태는 BeginFrame에서 설정
 	SetRasterizerState();
 	mGPUResourceService.BindConstantBufferBase(0, mConstantBuffer);
 	mGPUResourceService.BindProgram(mShaderProgram);
@@ -472,7 +472,7 @@ void Renderer::ProcessMeshCreation(const uint32_t maxCreateCountPerFrame, const 
 			continue;
 		}
 
-		// ���� ���Դٸ� ������ �׷��� �ϴ� �͵�
+		// 버퍼 풀이 비어 있으면 다음 프레임으로 미룬다
 		if (TryUploadMesh(meshBuildState))
 		{
 			++i;
@@ -491,7 +491,7 @@ bool Renderer::TryUploadMesh(ChunkMeshBuildState meshBuildState)
 	ChunkKey key = meshBuildState.Mesh->Key;
 	MeshData* needMesh = meshBuildState.Mesh;
 
-	// ���⼭���� �޽ø� �����Ѵ�.
+	// 여기서 메쉬를 업로드한다.
 	ChunkMesh& existingMesh = mChunkMeshes[key];
 	constexpr uint32_t MAX_BUFFER_WAIT_FRAMES = 10;
 	bool shouldRequestMoreBuffers = meshBuildState.WaitingForBufferFrameCount % MAX_BUFFER_WAIT_FRAMES == 0;
@@ -520,7 +520,7 @@ bool Renderer::TryUploadMesh(ChunkMeshBuildState meshBuildState)
 		return false;
 	}
 
-	// ���Ⱑ ���ε� ����
+	// 여기까지 왔으면 업로드 가능
 	assert((bNeedResizeVertex == false || mVertexBufferPool.IsExhaustedPool(needVertexPoolClass) == false)
 		&& (bNeedResizeIndex == false || mIndexBufferPool.IsExhaustedPool(needIndexPoolClass) == false));
 

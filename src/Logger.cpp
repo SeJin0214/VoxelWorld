@@ -14,7 +14,7 @@ Logger::Logger()
     : mCurrentFile(0)
     , mDirectoryPath(PathUtils::GetProjectRoot() / "logs")
 {
-    // ������ �˾Ƽ� false ��ȯ
+    // 이미 있으면 알아서 false 반환
     std::filesystem::create_directories(mDirectoryPath);
 }
 
@@ -68,8 +68,8 @@ void Logger::Log(LogSink output, LogLevel level, const char* format, ...)
             uintmax_t size = std::filesystem::file_size(filePath);
             if (size > MB)
             {
-                // MB �Ѿ�� �������Ϸ�
-                // root���� log ���丮 ���ܾ� ��
+                // MB를 넘으면 다음 로그 파일로
+                // root에 logs 디렉토리가 있어야 함
                 mFiles[mCurrentFile].close();
                 mCurrentFile = (mCurrentFile + 1) % MAX_FILES;
             }
@@ -84,7 +84,7 @@ void Logger::Log(LogSink output, LogLevel level, const char* format, ...)
 
 void Logger::Write(ostream& os, LogLevel level, const char* buffer)
 {
-    // �� ��ǻ�� �ð� ��������
+    // 현재 컴퓨터 시간 가져오기
     auto now = std::chrono::system_clock::now();
     auto nowTimeT = std::chrono::system_clock::to_time_t(now);
     std::tm localTime{};
@@ -94,7 +94,7 @@ void Logger::Write(ostream& os, LogLevel level, const char* buffer)
     constexpr uint32_t SIZE = static_cast<uint32_t>(LogLevel::Size);
     const char* prefix[SIZE] = { "[DEBUG]", "[INFO]", "[WARNING]", "[ERROR]", "[CRITICAL]" };
     
-    // �߰�ȣ�� �ϸ� ���� ��
+    // 접두사를 붙여 한 줄로 기록
     os << "[" << std::put_time(&localTime, "%Y-%m-%d %T") << "] "
        << prefix[static_cast<uint32_t>(level)] << " " << buffer << "\n";
 }
