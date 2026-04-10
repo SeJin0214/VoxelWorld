@@ -37,8 +37,9 @@ public:
 
 private:
     static constexpr uint32_t PLANE_COUNT = static_cast<uint32_t>(PlaneDir::Size);
+    
     Plane mPlanes[PLANE_COUNT];
-    static Plane NormalizePlane(const Plane& plane)
+    Plane NormalizePlane(const Plane& plane)
     {
         const float normalLength = glm::length(Vector3(plane));
         // 길이는 성분 3개만 하기

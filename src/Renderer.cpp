@@ -493,7 +493,7 @@ bool Renderer::TryUploadMesh(ChunkMeshBuildState meshBuildState)
 
 	// 여기서 메쉬를 업로드한다.
 	ChunkMesh& existingMesh = mChunkMeshes[key];
-	constexpr uint32_t MAX_BUFFER_WAIT_FRAMES = 10;
+	constexpr uint32_t MAX_BUFFER_WAIT_FRAMES = 20;
 	bool shouldRequestMoreBuffers = meshBuildState.WaitingForBufferFrameCount % MAX_BUFFER_WAIT_FRAMES == 0;
 
 	const uint32_t newVertexBytes = static_cast<uint32_t>(needMesh->Vertices.size()) * VERTEX_BYTE;

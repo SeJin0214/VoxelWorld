@@ -76,7 +76,7 @@ int main()
 			AdaptiveRenderDistanceController adaptiveRenderDistanceController(runtimeConfig);
 
 			// Bundle 넣어줘야 함, Factory에서 생성
-			ImguiLayerDesc layerDesc{ window, "#version 420 core" };
+			ImguiLayerDesc layerDesc{ window, "#version 330 core" };
 			ImguiLayer imGuiLayer(layerDesc);
 			BlockMaterialTable blockMaterialTable = BlockLoader::Load(PathUtils::GetAssetPath("Atlas.json"));
 			MeshBuilder meshBuilder(blockMaterialTable);

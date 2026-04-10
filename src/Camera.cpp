@@ -95,9 +95,11 @@ void Camera::CreateViewMatrix(const Vector3 position, const Vector3 mouseMovemen
 	mPosition += position.z * GetForwardDirection() * SPEED * deltaTime;
 
 	Matrix world = glm::translate(mPosition) * mBasis;
+
+	// 이것도 역행렬 안 쓰고도, 뷰 행렬 표현 방식대로 할 수 있다.
 	mViewMatrix = glm::inverse(world);
 
-	mViewProjMatrix =  mProjMatrix * mViewMatrix;
+	mViewProjMatrix = mProjMatrix * mViewMatrix;
 }
 
 void Camera::CreatePjoectionMatrix()

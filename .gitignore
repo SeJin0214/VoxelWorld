@@ -422,3 +422,5 @@ third_party/
 *.ini
 
 *.codex
+*.omx
+.omx/

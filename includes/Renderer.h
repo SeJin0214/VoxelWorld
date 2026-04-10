@@ -30,8 +30,6 @@ class JobScheduler;
 // 2. 청크 상태가 바뀌면 메쉬를 다시 생성해 반영한다.
 
 
-
-
 class Renderer
 {
 public:
